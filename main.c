@@ -80,7 +80,7 @@ int cmd_pid(char * flags[], int num) {
 			break;
 		case 2:
 			if (!strcmp(flags[1],"-p")) {
-				printf("Parent Process ID: %d\n", getppid());
+				printf("PPID: %d\n", getppid());
 				return 1;
 			}
 			else {
