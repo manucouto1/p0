@@ -72,23 +72,26 @@ int cmd_autores(char * flags[], int nargs){
 
 }
 
-void cmd_pid(char * flags[], int num) {
+int cmd_pid(char * flags[], int num) {
 	switch (num) {
 		case 1:
 			printf("Process ID: %d\n", getpid());
+			return 1;
 			break;
 		case 2:
 			if (!strcmp(flags[1],"-p")) {
 				printf("Parent Process ID: %d\n", getppid());
+				return 1;
 			}
 			else {
 				printf("Error\n");
+				return 0;
 			}
 			break;
 		default:
 			printf("Error\n");
+			return 0;
 	}
-
 }
 
 int cmd_chdir(char * flags[], int nargs){
