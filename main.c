@@ -2,7 +2,9 @@
 #include <memory.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/types.h>
 #include <errno.h>
+#include <time.h>
 
 #define clear() printf("\033[H\033[J")
 
@@ -94,6 +96,24 @@ int cmd_pid(char * flags[], int num) {
 	}
 }
 
+int cmd_fecha (char * flags[], int num) {
+	struct tm *t;
+	time_t s;
+
+	time(&s);
+	t = localtime(&s);
+
+	switch (num) {
+		case 1:
+			printf(asctime(t));
+			return 1;
+			break;
+		default:
+			printf("Error\n");
+			return 0;
+	}
+}
+
 int cmd_chdir(char * flags[], int nargs){
 	char dir[1024];
 
@@ -122,6 +142,7 @@ struct{
 		{"exit",1},
 		{"quit",1},
 		{"close", 1},
+		{"fecha", cmd_fecha},
 		{NULL, NULL}
 };
 
