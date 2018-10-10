@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <errno.h>
 
+#define COMANDO_INVALIDO -1
+
 #define clear() printf("\033[H\033[J")
 
 int trocearCadena ( char * cadena, char * trozos[]){
@@ -33,7 +35,6 @@ int cmd_autores(char * flags[], int nargs){
 	char *correos[2] = {"manuel.couto1@udc.es", "victor.escudero@udc.es"};
 	char *salida = malloc(1024);
 
-
 	if(nargs == 1){
 
 		strcpy(salida, autores[0]);
@@ -43,29 +44,28 @@ int cmd_autores(char * flags[], int nargs){
 		strcat(salida, correos[0]);
 		strcat(salida, "\t\t");
 		strcat(salida, correos[1]);
-		//strcat(salida,"\n\t");
 		printf("%s",salida);
-		} else if(nargs < 4){
-		strcpy(salida,"");
-		while(i < nargs && valid){
-			if(!strcmp(flags[i],"-n")){
-				strcat(salida, autores[0]);
-				strcat(salida, "\t\t\t");
-				strcat(salida, autores[1]);
-			} else if(!strcmp(flags[i],"-l")) {
-				strcat(salida, correos[0]);
-				strcat(salida, "\t\t");
-				strcat(salida, correos[1]);
-			} else {
-				valid = 0 ;;
-				printf("ERROR invalid command");
+	} else if(nargs < 4){
+			strcpy(salida,"");
+			while(i < nargs && valid){
+				if(!strcmp(flags[i],"-n")){
+					strcat(salida, autores[0]);
+					strcat(salida, "\t\t\t");
+					strcat(salida, autores[1]);
+				} else if(!strcmp(flags[i],"-l")) {
+					strcat(salida, correos[0]);
+					strcat(salida, "\t\t");
+					strcat(salida, correos[1]);
+				} else {
+					valid = 0 ;;
+					return COMANDO_INVALIDO;
+				}
+				i++;
+				if(i<nargs) strcat(salida,"\n\t");
 			}
-			i++;
-			if(i<nargs) strcat(salida,"\n\t");
-		}
-		printf("%s", salida);
+			printf("%s", salida);
 	} else {
-		printf("ERROR invalid command");
+		return COMANDO_INVALIDO;
 	}
 	free(salida);
 	return 0;
@@ -75,22 +75,18 @@ int cmd_autores(char * flags[], int nargs){
 int cmd_pid(char * flags[], int num) {
 	switch (num) {
 		case 1:
-			printf("Process ID: %d\n", getpid());
-			return 1;
-			break;
+			printf("Process ID: %d", getpid());
+			return 0;
 		case 2:
 			if (!strcmp(flags[1],"-p")) {
-				printf("PPID: %d\n", getppid());
-				return 1;
-			}
-			else {
-				printf("Error\n");
+				printf("PPID: %d", getppid());
 				return 0;
 			}
-			break;
+			else {
+				return COMANDO_INVALIDO;
+			}
 		default:
-			printf("Error\n");
-			return 0;
+			return COMANDO_INVALIDO;
 	}
 }
 
@@ -106,7 +102,7 @@ int cmd_chdir(char * flags[], int nargs){
 			printf("%s", dir);
 		};
 	} else {
-		printf("ERROR invalid command !");
+		return COMANDO_INVALIDO;
 	}
 
 	return 0;
@@ -132,12 +128,8 @@ int cmdManager(char *trozos[], int ntrozos){
 			return  CMDS[i].CMD_FUN(trozos, ntrozos);
 		}
 	}
-	printf("\tERROR invalid Command ");
-	return 0;
-
+	return COMANDO_INVALIDO;
 }
-
-
 
 int procesarEntrada(char * cadena){
 
@@ -147,21 +139,24 @@ int procesarEntrada(char * cadena){
 	if((ntrozos = trocearCadena(cadena, trozos))){
 		printf("\t");
 		return cmdManager(trozos,ntrozos);
-		//printf("\n");
 	}
 	return 0;
 }
 
 int main() {
+
+	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido"};
+
 	clear();
 	char * entrada ;
 	int salir = 0;
 	int counter = 1;
 	entrada = malloc(1024);
-	while (!salir) {
+	while ((salir<=0)) {
 		imprimirPrompt(counter);
 		leerEntrada(entrada);
 		salir = procesarEntrada(entrada);
+		if(salir<0)printf("\t%s",ERROR_MESAGES[abs(salir)]);
 		counter++;
 	}
 	free(entrada);
