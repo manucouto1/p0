@@ -161,11 +161,19 @@ int cmd_create(char *flags[], int nargs) {
 			return 0;
 		case 3:
 			if(!strcmp(flags[1],"-d")){
-				mkdir(flags[2],0777);
+				if (!mkdir(flags[2],0777)) {
+					return 0;
+				}
+				else {
+					if (errno == 13) {
+						printf("cannot create %s: permission denied", flags[2]);
+						return ERROR_CREATING_FILE;
+					}
+					return COMANDO_INVALIDO;
+				}
 			}else{
 				return COMANDO_INVALIDO;
 			}
-			return 0;
 		default:
 			return COMANDO_INVALIDO;
 	}
