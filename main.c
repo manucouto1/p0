@@ -145,7 +145,9 @@ int cmd_exit(char * flags[], int nargs) {
 }
 int cmd_create(char *flags[], int nargs) {
 	FILE *fp;
-
+	// TODO en el ejemplo que aparece en la practica saca un mensaje de error por permisos 
+	// 	cuando no es capaz de crear un archivo o un directorio en algun path eso habria 
+	// 	que mirarlo
 	switch (nargs) {
 		case 2:
 			fp = fopen(flags[1],"w");
