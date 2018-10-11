@@ -6,7 +6,6 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/stat.h>
-#include <sys/fcntl.h>
 
 #define COMANDO_INVALIDO -1
 #define ERROR_CREATING_FILE -2
@@ -96,13 +95,19 @@ int cmd_pid(char * flags[], int num) {
 int cmd_fecha (char * flags[], int num) {
 	struct tm *t;
 	time_t s;
+	char * fecha[100];
+	time(&s); //Guarda en s el tiempo en segundos desde 1/1/1970
+	t = localtime(&s); //Convierte time_t a tm
 
-	time(&s);
-	t = localtime(&s);
-
+	trocearCadena(asctime(t), fecha);
 	switch (num) {
 		case 1:
-			printf(strtok(asctime(t),"\n"));
+			if (!strcmp(flags[0], "fecha")) {
+				printf("%s, %s/%s/%s", fecha[0], fecha[2], fecha[1], fecha[4]);
+			}
+			else {
+				printf("%s", fecha[3]);
+			}
 			return 0;
 		default:
 			return COMANDO_INVALIDO;
@@ -127,16 +132,17 @@ int cmd_chdir(char * flags[], int nargs){
 	return 0;
 }
 
+int cmd_exit(char * flags[], int nargs) {
+	return 1;
+}
 int cmd_create(char *flags[], int nargs) {
 	FILE *fp;
 
 	switch (nargs) {
 		case 2:
 			fp = fopen(flags[1],"w");
-			//printf("%d\t",);
-			//if ( creat(flags[2],S_IRWXU)<0 ) { return ERROR_CREATING_FILE; }
-			if ( fp == NULL ) { return ERROR_CREATING_FILE; }
-			fclose(fp);
+			if ( fp==NULL ) { return ERROR_CREATING_FILE; }
+			fclose ( fp );
 			return 0;
 		case 3:
 			if(!strcmp(flags[1],"-d")){
@@ -174,9 +180,9 @@ struct{
 		{"delete", cmd_delete},
 		{"query", cmd_query},
 		{"list", cmd_list},
-		{"exit", 1},
-		{"quit", 1},
-		{"close", 1},
+		{"exit",cmd_exit},
+		{"end",cmd_exit},
+		{"fin",cmd_exit},
 
 		{NULL, NULL}
 };
