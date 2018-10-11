@@ -166,7 +166,7 @@ int cmd_create(char *flags[], int nargs) {
 				}
 				else {
 					if (errno == 13) {
-						printf("cannot create %s: permission denied", flags[2]);
+						printf("cannot create %s: permission denied\n", flags[2]);
 						return ERROR_CREATING_FILE;
 					}
 					return COMANDO_INVALIDO;
