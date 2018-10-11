@@ -125,19 +125,23 @@ int cmd_fecha (char * flags[], int num) {
 int cmd_chdir(char * flags[], int nargs){
 	char dir[1024];
 
-	if(nargs == 1){
-		getcwd(dir,1024);
-		printf("%s", dir);
-	} else if(nargs == 2){
-		if(chdir(flags[1])!=0){
-			sprintf(dir," chdir: %s", strerror(errno));
-			printf("%s", dir);
-		};
-	} else {
-		return COMANDO_INVALIDO;
-	}
+	switch ( nargs ) {
 
-	return 0;
+		case 1:
+
+			getcwd(dir,1024);
+			printf("%s",dir);
+			return 0;
+		case 2:
+
+			if(chdir(flags[1])!=0){
+				sprintf(dir," chdir: %s", strerror(errno));
+				printf("%s", dir);
+			};
+			return 0;
+		default:
+			return COMANDO_INVALIDO;
+	}
 }
 
 int cmd_exit(char * flags[], int nargs) {
@@ -151,31 +155,79 @@ int cmd_create(char *flags[], int nargs) {
 	switch (nargs) {
 		case 2:
 			fp = fopen(flags[1],"w");
-			if ( fp==NULL ) { return ERROR_CREATING_FILE; }
+			if ( fp==NULL ) {
+				fclose ( fp );
+				return ERROR_CREATING_FILE;
+			}
 			fclose ( fp );
 			return 0;
 		case 3:
 			if(!strcmp(flags[1],"-d")){
 				mkdir(flags[2],0777);
-				return 0;
 			}else{
 				return COMANDO_INVALIDO;
 			}
+			return 0;
 		default:
 			return COMANDO_INVALIDO;
 	}
 }
 
 int cmd_delete(char *flags[], int nargs) {
-
+	/*
+	 * TODO - Eliminar un fichero o un directorio
+	 * TODO - Si no tiene flag el directorio tiene que estar vacio para ser borrado
+	 * TODO - Si tiene un flag -r borrara todo el contenido y el directorio
+	 * DONE - Si no hay argumentos no se hace nada
+	 * TODO - Si no se puede eliminar Hay que informar al usuario con un mensaje
+	 */
+	switch ( nargs ) {
+		case 1:
+			// No aplica
+			return 0;
+		case 2:
+			return 0;
+		case 3:
+			return 0;
+		default:
+			return COMANDO_INVALIDO;
+	}
 }
 
 int cmd_query(char *flags[], int nargs) {
-
+	/*
+	 * TODO - Devuelve informacion de los archivos/directorios pasados como argumentos
+	 * TODO - Produce una linea por arch/dir pasado como argumento
+	 * TODO - mismo formato que ls -li resolviendo links simbolicos si es necesario
+	 * TODO - equivalente a ls -li para archivos y que ls -lid para directorios
+	 */
+	switch ( nargs ) {
+		case 2:
+			return 0;
+		case 3:
+			return 0;
+		default:
+			return COMANDO_INVALIDO;
+	}
 }
 
 int cmd_list(char *flags[], int nargs) {
-
+	/*
+	 * TODO - Lista los directorios y/o archivos proporcionados por los argumentos de linea de comandos
+	 * TODO - (-n) Solo listara el nombre y el tamaño de cada fich y/o dir. En cualquier otro caso se listara exactamente igual que query
+	 * TODO - (-r) Los directorios y su contenido seran listados de forma recusrsiva
+	 * TODO - (-h) Los fich/dir que empiecen por . no seran listados a menos que se ponga -h
+	 * TODO - Para averiguar el tipo de sistema de ficheros tendremos que usar una llamada al sistema, NO USAR EL CAMPO d_type
+	 * TODO - Si no se proporciona ningun nombre se listara el directorio de trabajo actual
+	 */
+	switch ( nargs ) {
+		case 2:
+			return 0;
+		case 3:
+			return 0;
+		default:
+			return COMANDO_INVALIDO;
+	}
 }
 
 struct{
@@ -219,7 +271,12 @@ int procesarEntrada(char * cadena){
 	}
 	return 0;
 }
-
+/*
+ * TODO - Separar los comandos query y list en dos archivos query.c y list.c
+ * TODO - Hacer que el programa pueda lidiar con caracteres tipo (*,?,...)
+ * TODO - Cunado no se ejecuta el comando de la forma esperada hay que informar al usuarion con un mensaje de error, para cada comando
+ * TODO - Revisar lo que comentan en la seccion HELPFUL INFORMATION
+ */
 int main() {
 
 	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File"};
