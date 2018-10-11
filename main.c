@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <sys/fcntl.h>
 
 #define COMANDO_INVALIDO -1
 #define ERROR_CREATING_FILE -2
@@ -68,38 +69,7 @@ int cmd_autores(char * flags[], int nargs){
 		default :
 			return COMANDO_INVALIDO;
 	}
-	/*if(nargs == 1){
 
-		strcpy(salida, autores[0]);
-		strcat(salida, "\t\t\t");
-		strcat(salida, autores[1]);
-		strcat(salida,"\n\t");
-		strcat(salida, correos[0]);
-		strcat(salida, "\t\t");
-		strcat(salida, correos[1]);
-		printf("%s",salida);
-	} else if(nargs < 4){
-			strcpy(salida,"");
-			while(i < nargs && valid){
-				if(!strcmp(flags[i],"-n")){
-					strcat(salida, autores[0]);
-					strcat(salida, "\t\t\t");
-					strcat(salida, autores[1]);
-				} else if(!strcmp(flags[i],"-l")) {
-					strcat(salida, correos[0]);
-					strcat(salida, "\t\t");
-					strcat(salida, correos[1]);
-				} else {
-					valid = 0 ;;
-					return COMANDO_INVALIDO;
-				}
-				i++;
-				if(i<nargs) strcat(salida,"\n\t");
-			}
-			printf("%s", salida);
-	} else {
-		return COMANDO_INVALIDO;
-	}*/
 	free(salida);
 	return 0;
 
@@ -162,10 +132,11 @@ int cmd_create(char *flags[], int nargs) {
 
 	switch (nargs) {
 		case 2:
-			fp = fopen(flags[2],"w");
-			printf("%p\t",fp);
-			if ( fp==NULL ) { return ERROR_CREATING_FILE; }
-			fclose ( fp );
+			fp = fopen(flags[1],"w");
+			//printf("%d\t",);
+			//if ( creat(flags[2],S_IRWXU)<0 ) { return ERROR_CREATING_FILE; }
+			if ( fp == NULL ) { return ERROR_CREATING_FILE; }
+			fclose(fp);
 			return 0;
 		case 3:
 			if(!strcmp(flags[1],"-d")){
