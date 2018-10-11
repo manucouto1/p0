@@ -23,7 +23,7 @@ int trocearCadena ( char * cadena, char * trozos[]){
 
 }
 
-void imprimirPrompt(int counter){
+void imprimirPrompt(){
 	printf("\n $ ");
 }
 
@@ -33,7 +33,6 @@ void leerEntrada( char * cadena){
 
 int cmd_autores(char * flags[], int nargs){
 	int i = 1;
-	int valid = 1;
 
 	char *autores[2] = {"Manuel Couto Pintos","Victor Escudero Gonzalez"};
 	char *correos[2] = {"manuel.couto1@udc.es", "victor.escudero@udc.es"};
@@ -60,7 +59,6 @@ int cmd_autores(char * flags[], int nargs){
 				strcat(salida, "\t\t");
 				strcat(salida, correos[1]);
 			} else {
-				valid = 0 ;;
 				return COMANDO_INVALIDO;
 			}
 			printf("%s", salida);
@@ -92,22 +90,32 @@ int cmd_pid(char * flags[], int num) {
 	}
 }
 
-int cmd_fecha (char * flags[], int num) {
+void time_util(char * fecha[]){
 	struct tm *t;
 	time_t s;
-	char * fecha[100];
 	time(&s); //Guarda en s el tiempo en segundos desde 1/1/1970
 	t = localtime(&s); //Convierte time_t a tm
-
 	trocearCadena(asctime(t), fecha);
+}
+
+int cmd_hora (char * flags[], int num){
+	char * fecha[100];
+	time_util(fecha);
+	switch (num) {
+		case 1 :
+			printf("%s", fecha[3]);
+			return 0;
+		default:
+			return COMANDO_INVALIDO;
+	}
+}
+
+int cmd_fecha (char * flags[], int num) {
+	char * fecha[100];
+	time_util(fecha);
 	switch (num) {
 		case 1:
-			if (!strcmp(flags[0], "fecha")) {
-				printf("%s, %s/%s/%s", fecha[0], fecha[2], fecha[1], fecha[4]);
-			}
-			else {
-				printf("%s", fecha[3]);
-			}
+			printf("%s, %s/%s/%s", fecha[0], fecha[2], fecha[1], fecha[4]);
 			return 0;
 		default:
 			return COMANDO_INVALIDO;
@@ -176,6 +184,7 @@ struct{
 		{"pid", cmd_pid},
 		{"chdir", cmd_chdir},
 		{"fecha", cmd_fecha},
+		{"hora", cmd_hora},
 		{"create", cmd_create},
 		{"delete", cmd_delete},
 		{"query", cmd_query},
@@ -216,14 +225,12 @@ int main() {
 	clear();
 	char * entrada ;
 	int salir = 0;
-	int counter = 1;
 	entrada = malloc(1024);
 	while ((salir<=0)) {
-		imprimirPrompt(counter);
+		imprimirPrompt();
 		leerEntrada(entrada);
 		salir = procesarEntrada(entrada);
 		if(salir<0)printf("%s",ERROR_MESAGES[abs(salir)]);
-		counter++;
 	}
 	free(entrada);
 }
