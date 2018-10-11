@@ -9,6 +9,7 @@
 
 #define COMANDO_INVALIDO -1
 #define ERROR_CREATING_FILE -2
+#define ERROR_DELETING_FILE -3
 
 #define clear() printf("\033[H\033[J")
 
@@ -167,9 +168,11 @@ int cmd_create(char *flags[], int nargs) {
 				else {
 					if (errno == 13) {
 						printf("cannot create %s: permission denied\n", flags[2]);
-						return ERROR_CREATING_FILE;
 					}
-					return COMANDO_INVALIDO;
+					else {
+						printf("create: %s\n", strerror(errno));
+					}
+					return ERROR_CREATING_FILE;
 				}
 			}else{
 				return COMANDO_INVALIDO;
@@ -182,18 +185,44 @@ int cmd_create(char *flags[], int nargs) {
 int cmd_delete(char *flags[], int nargs) {
 	/*
 	 * TODO - Eliminar un fichero o un directorio
-	 * TODO - Si no tiene flag el directorio tiene que estar vacio para ser borrado
+	 * DONE - Si no tiene flag el directorio tiene que estar vacio para ser borrado
 	 * TODO - Si tiene un flag -r borrara todo el contenido y el directorio
 	 * DONE - Si no hay argumentos no se hace nada
 	 * TODO - Si no se puede eliminar Hay que informar al usuario con un mensaje
 	 */
+	struct stat path_stat;
+	char dir[1024];
+
 	switch ( nargs ) {
 		case 1:
-			// No aplica
 			return 0;
 		case 2:
+			stat(flags[1], &path_stat);
+			if (strcmp(flags[1],"-r")) {
+				if (S_ISDIR(path_stat.st_mode)) {
+					if (rmdir(flags[1])) {
+						printf("delete: %s\n", strerror(errno));
+						return ERROR_DELETING_FILE;
+					}
+				}
+				else {
+					if (unlink(flags[1])) {
+						printf("delete: %s\n", strerror(errno));
+						return ERROR_DELETING_FILE;
+					}
+				}
+			}
 			return 0;
 		case 3:
+			/*if (strcmp(flags[1], "-r")) {
+				return COMANDO_INVALIDO;
+			}
+			else {
+				stat(flags[2],&path_stat);
+				if (S_ISDIR(path_stat.st_mode)) {
+					if (I)
+				}
+			} */
 			return 0;
 		default:
 			return COMANDO_INVALIDO;
@@ -285,7 +314,7 @@ int procesarEntrada(char * cadena){
  */
 int main() {
 
-	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File"};
+	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File"};
 
 	clear();
 	char * entrada ;
