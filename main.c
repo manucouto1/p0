@@ -171,7 +171,7 @@ int cmd_create(char *flags[], int nargs) {
 
 	switch (nargs) {
 		case 2:
-			fp = fopen(flags[2],"w");
+			fp = fopen(flags[1],"w");
 			printf("%p\t",fp);
 			if ( fp==NULL ) { return ERROR_CREATING_FILE; }
 			fclose ( fp );
