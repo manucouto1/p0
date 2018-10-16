@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <dirent.h>
 
 #define COMANDO_INVALIDO -1
 #define ERROR_CREATING_FILE -2
@@ -191,38 +192,72 @@ int cmd_delete(char *flags[], int nargs) {
 	 * TODO - Si no se puede eliminar Hay que informar al usuario con un mensaje
 	 */
 	struct stat path_stat;
-	char dir[1024];
+	DIR *dir;
+	struct dirent *ent;
+	char *aux[1024];
+	printf("%d\n", nargs);
+	char $_home[1024], aux_path[1024];
 
 	switch ( nargs ) {
 		case 1:
 			return 0;
 		case 2:
-			stat(flags[1], &path_stat);
+			printf("%s,%d, ",flags[2], stat(flags[1],&path_stat));
+			printf("%s\n",strerror(errno));
 			if (strcmp(flags[1],"-r")) {
 				if (S_ISDIR(path_stat.st_mode)) {
-					if (rmdir(flags[1])) {
+					/*if (rmdir(flags[1])) {
 						printf("delete: %s\n", strerror(errno));
 						return ERROR_DELETING_FILE;
-					}
+					}*/
+					printf("Se elimina el dir: %s:\n", flags[1]);
 				}
 				else {
-					if (unlink(flags[1])) {
+					/*if (unlink(flags[1])) {
 						printf("delete: %s\n", strerror(errno));
 						return ERROR_DELETING_FILE;
-					}
+					}*/
+					printf("Se elimina el archivo: %s\n", flags[1]);
 				}
 			}
 			return 0;
 		case 3:
-			/*if (strcmp(flags[1], "-r")) {
+			if (strcmp(flags[1], "-r")) {
 				return COMANDO_INVALIDO;
 			}
 			else {
-				stat(flags[2],&path_stat);
-				if (S_ISDIR(path_stat.st_mode)) {
-					if (I)
+				for (int i=0; i<3;i++) {
+					aux[i] = flags[i];
 				}
-			} */
+				printf("%s,%d, ",flags[2], stat(flags[2],&path_stat));
+				printf("%s\n",strerror(errno));
+				if (S_ISDIR(path_stat.st_mode)) {
+					printf("Es un dir no vacio");
+					if ((dir = opendir(flags[2])) != NULL) {
+						getcwd($_home, 1024);
+						strcpy(aux_path, $_home);
+						strcat(aux_path, "/");
+						strcat(aux_path,flags[2]);
+						chdir(aux_path);
+						while ((ent = readdir(dir)) !=NULL) {
+							aux[2] = ent->d_name;
+							printf("%s\n", aux[2]);
+							if (strcmp(aux[2],".") && strcmp(aux[2],"..")) {
+								printf("1\n");
+								cmd_delete(aux,3);
+							}
+						}
+						chdir($_home);
+						closedir(dir);
+						flags[1] = flags[2];
+						cmd_delete(flags, 2);
+					}
+				}
+				else {
+					aux[1] = flags[2];
+					cmd_delete(aux, 2);
+				}
+			}
 			return 0;
 		default:
 			return COMANDO_INVALIDO;
