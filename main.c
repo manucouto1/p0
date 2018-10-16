@@ -6,6 +6,10 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <dirent.h>
+#include <pwd.h>
+#include <grp.h>
+//include <ftw.h>
 
 #define COMANDO_INVALIDO -1
 #define ERROR_CREATING_FILE -2
@@ -29,6 +33,80 @@ void imprimirPrompt(){
 
 void leerEntrada( char * cadena){
 	fgets(cadena, 1024, stdin);
+}
+
+char TipoFichero (mode_t m)
+{
+	switch (m&S_IFMT) { /*and bit a bit con los bits de formato,0170000 */
+		case S_IFSOCK: return 's'; /*socket */
+		case S_IFLNK: return 'l'; /*symbolic link*/
+		case S_IFREG: return '-'; /* fichero normal*/
+		case S_IFBLK: return 'b'; /*block device*/
+		case S_IFDIR: return 'd'; /*directorio */
+		case S_IFCHR: return 'c'; /*char device*/
+		case S_IFIFO: return 'p'; /*pipe*/
+		default: return '?'; /*desconocido, no deberia aparecer*/
+	}
+}
+
+char * ConvierteModo (mode_t m, char *permisos)
+{
+	strcpy (permisos,"---------- ");
+	permisos[0]=TipoFichero(m);
+	if (m&S_IRUSR) permisos[1]='r'; /*propietario*/
+	if (m&S_IWUSR) permisos[2]='w';
+	if (m&S_IXUSR) permisos[3]='x';
+	if (m&S_IRGRP) permisos[4]='r'; /*grupo*/
+	if (m&S_IWGRP) permisos[5]='w';
+	if (m&S_IXGRP) permisos[6]='x';
+	if (m&S_IROTH) permisos[7]='r'; /*resto*/
+	if (m&S_IWOTH) permisos[8]='w';
+	if (m&S_IXOTH) permisos[9]='x';
+	if (m&S_ISUID) permisos[3]='s'; /*setuid, setgid y stickybit*/
+	if (m&S_ISGID) permisos[6]='s';
+	if (m&S_ISVTX) permisos[9]='t';
+	return permisos;
+}
+
+char * ConvierteModo2 (mode_t m)
+{
+	static char permisos[12];
+	strcpy (permisos,"---------- ");
+	permisos[0]=TipoFichero(m);
+	if (m&S_IRUSR) permisos[1]='r'; /*propietario*/
+	if (m&S_IWUSR) permisos[2]='w';
+	if (m&S_IXUSR) permisos[3]='x';
+	if (m&S_IRGRP) permisos[4]='r'; /*grupo*/
+	if (m&S_IWGRP) permisos[5]='w';
+	if (m&S_IXGRP) permisos[6]='x';
+	if (m&S_IROTH) permisos[7]='r'; /*resto*/
+	if (m&S_IWOTH) permisos[8]='w';
+	if (m&S_IXOTH) permisos[9]='x';
+	if (m&S_ISUID) permisos[3]='s'; /*setuid, setgid y stickybit*/
+	if (m&S_ISGID) permisos[6]='s';
+	if (m&S_ISVTX) permisos[9]='t';
+	return (permisos);
+}
+
+char * ConvierteModo3 (mode_t m)
+{
+	char * permisos;
+	permisos=(char *) malloc (12);
+	strcpy (permisos,"---------- ");
+	permisos[0]=TipoFichero(m);
+	if (m&S_IRUSR) permisos[1]='r'; /*propietario*/
+	if (m&S_IWUSR) permisos[2]='w';
+	if (m&S_IXUSR) permisos[3]='x';
+	if (m&S_IRGRP) permisos[4]='r'; /*grupo*/
+	if (m&S_IWGRP) permisos[5]='w';
+	if (m&S_IXGRP) permisos[6]='x';
+	if (m&S_IROTH) permisos[7]='r'; /*resto*/
+	if (m&S_IWOTH) permisos[8]='w';
+	if (m&S_IXOTH) permisos[9]='x';
+	if (m&S_ISUID) permisos[3]='s'; /*setuid, setgid y stickybit*/
+	if (m&S_ISGID) permisos[6]='s';
+	if (m&S_ISVTX) permisos[9]='t';
+	return (permisos);
 }
 
 int cmd_autores(char * flags[], int nargs){
@@ -199,14 +277,39 @@ int cmd_query(char *flags[], int nargs) {
 	 * TODO - mismo formato que ls -li resolviendo links simbolicos si es necesario
 	 * TODO - equivalente a ls -li para archivos y que ls -lid para directorios
 	 */
-	switch ( nargs ) {
-		case 2:
-			return 0;
-		case 3:
-			return 0;
-		default:
-			return COMANDO_INVALIDO;
+	int i;
+	struct stat fileStat;
+	char * permisos;
+	permisos = malloc(1024);
+
+	for(i = 1; i<nargs; i++){
+
+		if(stat(flags[i], &fileStat)==0){
+			ConvierteModo(fileStat.st_mode,permisos);
+			struct passwd *pw = getpwuid(fileStat.st_uid);
+			struct group *gr = getgrgid(fileStat.st_gid);
+			time_t t = fileStat.st_mtim.tv_sec;
+			struct tm *tm = localtime(&t);
+			char buf[200];
+
+			strftime(buf, sizeof(buf), "%d.%m.%Y %H:%M:%S", tm);
+			printf("%ju ", fileStat.st_ino);
+			printf("\t %s ", permisos);
+			printf("\t %s ", pw->pw_name);
+			printf("\t %s ", gr->gr_name);
+			printf("\t %s ", fileStat.st_size);
+			printf("\%s ",buf);
+
+			//printf("\t %s %d %d:%d ", tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min);
+
+		} else {
+			printf("\n Error >> <<");
+		}
+
 	}
+
+	free(permisos);
+ 	return 0;
 }
 
 int cmd_list(char *flags[], int nargs) {
@@ -217,6 +320,7 @@ int cmd_list(char *flags[], int nargs) {
 	 * TODO - (-h) Los fich/dir que empiecen por . no seran listados a menos que se ponga -h
 	 * TODO - Para averiguar el tipo de sistema de ficheros tendremos que usar una llamada al sistema, NO USAR EL CAMPO d_type
 	 * TODO - Si no se proporciona ningun nombre se listara el directorio de trabajo actual
+	 * opendir() -> para el listado recursivo
 	 */
 	switch ( nargs ) {
 		case 2:
@@ -226,6 +330,36 @@ int cmd_list(char *flags[], int nargs) {
 		default:
 			return COMANDO_INVALIDO;
 	}
+	/*
+	//Declaramos variables, estructuras
+	struct stat estru;
+	struct dirent *dt;
+	DIR *dire;
+
+	dire = opendir(nombre);
+
+	printf("abriendo el directorio %s\n",nombre);
+	//Recorrer directorio
+	while((dt=readdir(dire))!=NULL){
+		//strcmp permite comparar, si la comparación es verdadera devuelve un 0
+		//Aquí se pregunta si el arhivo o directorio es distinto de . y ..
+		//Para así asegurar que se muestre de forma recursiva los directorios y ficheros del directorio actual
+		if((strcmp(dt->d_name,".")!=0)&&(strcmp(dt->d_name,"..")!=0)){
+			stat(dt->d_name,&estru);
+			//Si es un directorio, llamar a la misma función para mostrar archivos
+			if(S_ISDIR(estru.st_mode)){
+				lista_directorio(dt->d_name);
+				//Si no es directorio, mostrar archivos
+			}else{
+				imprime_permisos(estru);
+				printf("%-20s %d \n",dt->d_name,estru.st_size);
+			}
+		}
+
+	}
+	closedir(dire);
+
+} */
 }
 
 struct{
