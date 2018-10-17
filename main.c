@@ -334,8 +334,8 @@ int cmd_query(char *flags[], int nargs) {
 			printf("\t %s ", permisos);
 			printf("\t %s ", pw->pw_name);
 			printf("\t %s ", gr->gr_name);
-			printf("\t %s ", fileStat.st_size);
-			printf("\%s ",buf);
+			//printf("\t %s ", fileStat.st_size);
+			printf("\t %s ",buf);
 
 			//printf("\t %s %d %d:%d ", tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min);
 
