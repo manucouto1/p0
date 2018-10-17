@@ -14,6 +14,7 @@
 #define COMANDO_INVALIDO -1
 #define ERROR_CREATING_FILE -2
 #define ERROR_DELETING_FILE -3
+#define ERROR_DELETING_DIR -4
 
 #define clear() printf("\033[H\033[J")
 
@@ -205,9 +206,7 @@ int cmd_chdir(char * flags[], int nargs){
 	char dir[1024];
 
 	switch ( nargs ) {
-
 		case 1:
-
 			getcwd(dir,1024);
 			printf("%s",dir);
 			return 0;
@@ -240,19 +239,17 @@ int cmd_create(char *flags[], int nargs) {
 			return 0;
 		case 3:
 			if(!strcmp(flags[1],"-d")){
-				if (!mkdir(flags[2],0777)) {
+				if(!mkdir(flags[2],0777)){
 					return 0;
-				}
-				else {
-					if (errno == 13) {
-						printf("cannot create %s: permission denied\n", flags[2]);
-					}
-					else {
-						printf("create: %s\n", strerror(errno));
+				} else {
+					if(errno == 13){
+						printf("\t cannot create %s: permission denied\n", flags[2]);
+					} else {
+						printf("create: %s", strerror(errno));
 					}
 					return ERROR_CREATING_FILE;
 				}
-			}else{
+			} else {
 				return COMANDO_INVALIDO;
 			}
 		default:
@@ -260,71 +257,111 @@ int cmd_create(char *flags[], int nargs) {
 	}
 }
 
-int cmd_delete(char *flags[], int nargs) {
-	/*
-	 * TODO - Eliminar un fichero o un directorio
-	 * DONE - Si no tiene flag el directorio tiene que estar vacio para ser borrado
-	 * TODO - Si tiene un flag -r borrara todo el contenido y el directorio
-	 * DONE - Si no hay argumentos no se hace nada
-	 * TODO - Si no se puede eliminar Hay que informar al usuario con un mensaje
-	 */
-	struct stat path_stat;
+/* - DELETE util functions */
+
+int borrar_archivo(char* elemento){
+	if (unlink(elemento)) {
+		printf("\tcannot delete file %s: %s\n", elemento, strerror(errno));
+		return ERROR_DELETING_FILE;
+	} else {
+		printf("\n\t Borrando archivo %s",elemento);
+		return 0;
+	}
+}
+
+int borrar_directorio(char * elemento){
+	if (rmdir(elemento)) {
+		printf("cannot delete directory %s: %s\n", elemento, strerror(errno));
+		return ERROR_DELETING_DIR;
+	} else {
+		printf("\n\t Borrando directorio %s",elemento);
+		return 0;
+	}
+}
+
+int borrar_rec(char *elemento, struct stat path_stat){
+
 	DIR *dir;
 	struct dirent *ent;
-	char *aux[1024];
+
+	if (S_ISDIR(path_stat.st_mode)) {
+		if ((dir = opendir(elemento)) != NULL) {
+			chdir(elemento);
+			while ((ent = readdir(dir)) !=NULL) {
+				if (strcmp(ent->d_name,".") && strcmp(ent->d_name,"..")) {
+					stat(ent->d_name, &path_stat);
+					borrar_rec(ent->d_name, path_stat);
+				}
+			}
+			chdir("..");
+			closedir(dir);
+			borrar_directorio(elemento);
+		}
+	} else {
+		borrar_archivo(elemento);
+	}
+}
+/* - end DELETE util functions */
+
+int cmd_delete(char *flags[], int nargs) {
+	/*
+	 * DONE - Eliminar un fichero o un directorio
+	 * DONE - Si no tiene flag el directorio tiene que estar vacio para ser borrado
+	 * DONE - Si tiene un flag -r borrar el contenido y el directorio
+	 * DONE - Si no hay argumentos no se hace nada
+	 * DONE - Si no se puede eliminar Hay que informar al usuario con un mensaje
+	 */
+
+	struct stat path_stat;
 
 	switch ( nargs ) {
 		case 1:
 			return 0;
 		case 2:
 			stat(flags[1], &path_stat);
-			if (strcmp(flags[1],"-r")) {
-				if (S_ISDIR(path_stat.st_mode)) {
-					if (rmdir(flags[1])) {
-						printf("cannot delete: %s\n", strerror(errno));
-						return ERROR_DELETING_FILE;
-					}
-				}
-				else {
-					if (unlink(flags[1])) {
-						printf("cannot delete: %s\n", strerror(errno));
-						return ERROR_DELETING_FILE;
-					}
-				}
+			if (S_ISDIR(path_stat.st_mode)) {
+				return borrar_directorio(flags[1]);
+			} else {
+				return borrar_archivo(flags[1]);
 			}
-			return 0;
 		case 3:
 			if (strcmp(flags[1], "-r")) {
 				return COMANDO_INVALIDO;
-			}
-			else {
-				for (int i=0; i<3;i++) {
-					aux[i] = flags[i];
-				}
-				stat(flags[2],&path_stat);
-				if (S_ISDIR(path_stat.st_mode)) {
-					if ((dir = opendir(flags[2])) != NULL) {
-						chdir(flags[2]);
-						while ((ent = readdir(dir)) !=NULL) {
-							aux[2] = ent->d_name;
-							if (strcmp(aux[2],".") && strcmp(aux[2],"..")) {
-								cmd_delete(aux,3);
-							}
-						}
-						chdir("..");
-						closedir(dir);
-						aux[1] = flags[2];
-						cmd_delete(aux, 2);
-					}
-				}
-				else {
-					aux[1] = flags[2];
-					cmd_delete(aux, 2);
-				}
+			} else {
+				stat(flags[2], &path_stat);
+				borrar_rec(flags[2], path_stat);
 			}
 			return 0;
 		default:
 			return COMANDO_INVALIDO;
+	}
+
+}
+
+int print_li(char *element, char *permisos){
+
+	struct stat fileStat;
+
+	if(stat(element, &fileStat)==0){
+		ConvierteModo(fileStat.st_mode,permisos);
+		struct passwd *pw = getpwuid(fileStat.st_uid);
+		struct group *gr = getgrgid(fileStat.st_gid);
+		time_t t = fileStat.st_mtim.tv_sec;
+		struct tm *tm = localtime(&t);
+		char buf[200];
+
+		strftime(buf, sizeof(buf), "%d.%m.%Y %H:%M:%S", tm);
+		printf("%ju ", fileStat.st_ino);
+		printf("\t %s ", permisos);
+		printf("\t %s ", pw->pw_name);
+		printf("\t %s ", gr->gr_name);
+		printf("\t %s ", fileStat.st_size);
+		printf("\t %s ",buf);
+
+		//printf("\t %s %d %d:%d ", tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min);
+
+	} else {
+		printf("\n Error >> <<");
 	}
 }
 
@@ -335,35 +372,13 @@ int cmd_query(char *flags[], int nargs) {
 	 * TODO - mismo formato que ls -li resolviendo links simbolicos si es necesario
 	 * TODO - equivalente a ls -li para archivos y que ls -lid para directorios
 	 */
+
 	int i;
-	struct stat fileStat;
 	char * permisos;
 	permisos = malloc(1024);
 
 	for(i = 1; i<nargs; i++){
-
-		if(stat(flags[i], &fileStat)==0){
-			ConvierteModo(fileStat.st_mode,permisos);
-			struct passwd *pw = getpwuid(fileStat.st_uid);
-			struct group *gr = getgrgid(fileStat.st_gid);
-			time_t t = fileStat.st_mtim.tv_sec;
-			struct tm *tm = localtime(&t);
-			char buf[200];
-
-			strftime(buf, sizeof(buf), "%d.%m.%Y %H:%M:%S", tm);
-			printf("%ju ", fileStat.st_ino);
-			printf("\t %s ", permisos);
-			printf("\t %s ", pw->pw_name);
-			printf("\t %s ", gr->gr_name);
-			printf("\t %s ", fileStat.st_size);
-			printf("\t %s ",buf);
-
-			//printf("\t %s %d %d:%d ", tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min);
-
-		} else {
-			printf("\n Error >> <<");
-		}
-
+		print_li(flags[i], permisos);
 	}
 
 	free(permisos);
@@ -469,7 +484,7 @@ int procesarEntrada(char * cadena){
  */
 int main() {
 
-	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File"};
+	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File", "ERROR Deleting Directory"};
 
 	clear();
 	char * entrada ;
