@@ -380,14 +380,106 @@ int cmd_list(char *flags[], int nargs) {
 	 * TODO - Si no se proporciona ningun nombre se listara el directorio de trabajo actual
 	 * opendir() -> para el listado recursivo
 	 */
-	switch ( nargs ) {
+	struct stat path_stat;
+	int index = 0, option = 0;
+	int nflag = 0, hflag = 0, rflag = 0, sumf = 0;
+	DIR *dir;
+	struct dirent *ent;
+
+	while ((index = getopt(nargs, flags, "nhr")) != -1) {
+		switch (index) {
+			case 'n':
+				nflag = 1;
+				break;
+			case 'h':
+				hflag = 2;
+				break;
+			case 'r':
+				rflag = 5;
+				break;
+			default:
+				break;
+			}
+		}
+	sumf = nflag + hflag + rflag;
+
+	switch (sumf) {
+		case 0:
+			break;
+		case 1:
+			if (nargs > 2) {
+				for (int i = 2; i < nargs; i++) {
+					if ((dir = opendir(".")) != NULL) {
+						while ((ent = readdir(dir)) != NULL) {
+							if (!strcmp(flags[i], ent->d_name)) {
+								printf("%s \n", ent->d_name);
+							}
+						}
+						closedir(dir);
+					}
+				}
+			}
+			else {
+				if ((dir = opendir(".")) != NULL) {
+					while ((ent = readdir(dir)) != NULL) {
+						printf("%s \n", ent->d_name);
+					}
+					closedir(dir);
+				}
+			}
+			break;
 		case 2:
-			return 0;
+			break;
 		case 3:
-			return 0;
+			break;
+		case 5:
+			break;
+		case 6:
+			break;
+		case 7:
+			break;
+		case 8:
+			break;
 		default:
-			return COMANDO_INVALIDO;
+			break;
 	}
+
+	/*if (flags[1]=="-n") {
+		if (flags[2]=="-h") {
+			if (flags[3] == "-r") {
+
+			}
+			else {
+
+			}
+		}
+		else {
+			if (flags[2]=="-r") {
+
+			}
+			else{
+
+			}
+		}
+	}
+	else {
+		if (flags[1]=="-h") {
+			if (flags[2] == "-r") {
+
+			}
+			else {
+
+			}
+		}
+		else {
+			if (flags[1] == "-r") {
+
+			}
+			else {
+
+			}
+		}
+	}*/
 	/*
 	//Declaramos variables, estructuras
 	struct stat estru;
@@ -418,6 +510,7 @@ int cmd_list(char *flags[], int nargs) {
 	closedir(dire);
 
 } */
+	return 0;
 }
 
 struct{
