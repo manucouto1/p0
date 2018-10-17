@@ -9,12 +9,14 @@
 #include <dirent.h>
 #include <pwd.h>
 #include <grp.h>
+#include <string.h>
 //include <ftw.h>
 
 #define COMANDO_INVALIDO -1
 #define ERROR_CREATING_FILE -2
 #define ERROR_DELETING_FILE -3
 #define ERROR_DELETING_DIR -4
+#define ERROR_LISTING -5
 
 #define clear() printf("\033[H\033[J")
 
@@ -355,13 +357,15 @@ int print_li(char *element, char *permisos){
 		printf("\t %s ", permisos);
 		printf("\t %s ", pw->pw_name);
 		printf("\t %s ", gr->gr_name);
-		printf("\t %s ", fileStat.st_size);
+		printf("\t %ld ", fileStat.st_size);
 		printf("\t %s ",buf);
+		printf("\t %s", element);
 
 		//printf("\t %s %d %d:%d ", tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min);
+		printf("\n");
 
 	} else {
-		printf("\n Error >> <<");
+		printf("Error >>%s<<\n", strerror(errno));
 	}
 }
 
@@ -396,11 +400,11 @@ int cmd_list(char *flags[], int nargs) {
 	 * opendir() -> para el listado recursivo
 	 */
 	struct stat path_stat;
-	int index = 0, option = 0;
+	int index = 0, acu = 0;
 	int nflag = 0, hflag = 0, rflag = 0, sumf = 0;
 	DIR *dir;
 	struct dirent *ent;
-
+	char *aux[256];
 	while ((index = getopt(nargs, flags, "nhr")) != -1) {
 		switch (index) {
 			case 'n':
@@ -414,38 +418,106 @@ int cmd_list(char *flags[], int nargs) {
 				break;
 			default:
 				break;
-			}
 		}
+	}
+	optind = 1;
 	sumf = nflag + hflag + rflag;
-
 	switch (sumf) {
 		case 0:
+			if ((dir = opendir(".")) != NULL) {
+				while ((ent = readdir(dir)) != NULL) {
+					if (ent->d_name[0] != '.') {
+						acu = acu + 1;
+						strcpy(flags[acu],ent->d_name);
+						//printf("%s\n",flags[acu]);
+					}
+				}
+				closedir(dir);
+				//cmd_query(flags, acu);
+			}
+			else {
+				return ERROR_LISTING;
+			}
 			break;
 		case 1:
 			if (nargs > 2) {
 				for (int i = 2; i < nargs; i++) {
-					if ((dir = opendir(".")) != NULL) {
-						while ((ent = readdir(dir)) != NULL) {
-							if (!strcmp(flags[i], ent->d_name)) {
-								printf("%s \n", ent->d_name);
+					if (!stat(flags[i], &path_stat)) {
+						if ((dir = opendir(".")) != NULL) {
+							while ((ent = readdir(dir)) != NULL) {
+								if (!strcmp(flags[i], ent->d_name) && (ent->d_name[0] != '.')) {
+									printf("%s %ld\n", ent->d_name, path_stat.st_size);
+								}
 							}
+							closedir(dir);
 						}
-						closedir(dir);
+						else {
+							return ERROR_LISTING;
+						}
+					}
+					else {
+						printf("cannot access %s: %s\n",flags[i], strerror(errno));
 					}
 				}
 			}
 			else {
 				if ((dir = opendir(".")) != NULL) {
 					while ((ent = readdir(dir)) != NULL) {
-						printf("%s \n", ent->d_name);
+						if (ent->d_name[0] != '.') {
+							if (!stat(ent->d_name,&path_stat)) {
+								printf("%s %ld\n", ent->d_name, path_stat.st_size);
+							}
+							else {
+								printf("cannot access %s: %s\n",ent->d_name, strerror(errno));
+							}
+						}
 					}
 					closedir(dir);
+				}
+				else {
+					return ERROR_LISTING;
 				}
 			}
 			break;
 		case 2:
 			break;
 		case 3:
+			if (nargs > 3) {
+				for (int i = 3; i < nargs; i++) {
+					if (!stat(flags[i], &path_stat)) {
+						if ((dir = opendir(".")) != NULL) {
+							while ((ent = readdir(dir)) != NULL) {
+								if (!strcmp(flags[i], ent->d_name)) {
+									printf("%s %ld\n", ent->d_name, path_stat.st_size);
+								}
+							}
+							closedir(dir);
+						}
+						else {
+							return ERROR_LISTING;
+						}
+					}
+					else {
+						printf("cannot access %s: %s\n",flags[i], strerror(errno));
+					}
+				}
+			}
+			else {
+				if ((dir = opendir(".")) != NULL) {
+					while ((ent = readdir(dir)) != NULL) {
+						if (!stat(ent->d_name,&path_stat)) {
+							printf("%s %ld\n", ent->d_name, path_stat.st_size);
+						}
+						else {
+							printf("cannot access %s: %s\n",ent->d_name, strerror(errno));
+						}
+					}
+					closedir(dir);
+				}
+				else {
+					return ERROR_LISTING;
+				}
+			}
 			break;
 		case 5:
 			break;
@@ -577,7 +649,7 @@ int procesarEntrada(char * cadena){
  */
 int main() {
 
-	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File", "ERROR Deleting Directory"};
+	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File", "ERROR Deleting Directory","ERROR Listing"};
 
 	clear();
 	char * entrada ;
