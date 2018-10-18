@@ -10,6 +10,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <string.h>
+#include <sys/fcntl.h>
 //include <ftw.h>
 
 #define COMANDO_INVALIDO -1
@@ -228,27 +229,19 @@ int cmd_exit(char * flags[], int nargs) {
 	return 1;
 }
 int cmd_create(char *flags[], int nargs) {
-	FILE *fp;
+	int fd;
 
 	switch (nargs) {
 		case 2:
-			fp = fopen(flags[1],"w");
-			if ( fp==NULL ) {
-				fclose ( fp );
-				return ERROR_CREATING_FILE;
-			}
-			fclose ( fp );
+			fd = open(flags[1], O_WRONLY | O_APPEND | O_CREAT, 0644);
+			close(fd);
 			return 0;
 		case 3:
 			if(!strcmp(flags[1],"-d")){
 				if(!mkdir(flags[2],0777)){
 					return 0;
 				} else {
-					if(errno == 13){
-						printf("\t cannot create %s: permission denied\n", flags[2]);
-					} else {
-						printf("create: %s", strerror(errno));
-					}
+					printf("cannot create: %s\n", strerror(errno));
 					return ERROR_CREATING_FILE;
 				}
 			} else {
@@ -365,8 +358,9 @@ int print_li(char *element, char *permisos){
 		printf("%-1ld ", (long) fileStat.st_nlink);
 		printf("%-5s ", pw->pw_name);
 		printf("%-5s ", gr->gr_name);
-		printf("%-5d ", ftell(file));
+		printf("%ld ", ftell(file));
 		printf("%-5s ",buf);
+		printf("%s \n", element);
 		//printf("\t %s %d %d:%d ", tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min);
 
 	} else {
@@ -491,26 +485,53 @@ int cmd_list(char *flags[], int nargs) {
 				for (i = 1; i< nargs; i++) {
 					if (flags[i][0] == '.') {
 						deleteAtPosition(flags,&nargs, i);
+						i--;
 					}
 				}
-				cmd_query(flags, nargs);
-
-				if ()
+				for (i = 1; i<nargs; i++) {
+					if (!stat(flags[i],&path_stat)) {
+						if (flags[i][0] != '.') {
+							if ((dir = opendir(".")) != NULL) {
+								while ((ent = readdir(dir)) != NULL) {
+									if (!strcmp(flags[i], ent->d_name)) {
+										stat(flags[i], &path_stat);
+										aux[1] = ent->d_name;
+										cmd_query(aux, 2);
+										if (S_ISDIR(path_stat.st_mode)) {
+											chdir(flags[i]);
+											if ((dir = opendir(".")) != NULL) {
+												while ((ent = readdir(dir)) != NULL) {
+													if (ent->d_name[0] != '.') {
+														aux[1] = strdup(ent->d_name);
+														cmd_query(aux, 2);
+													}
+												}
+												closedir(dir);
+											}
+											chdir("..");
+										}
+									}
+								}
+								closedir(dir);
+							} else {
+								return ERROR_LISTING;
+							}
+						} else {
+							deleteAtPosition(flags, &nargs, i);
+							i--;
+						}
+					}
+					else {
+						printf("cannot access %s: %s\n",flags[i], strerror(errno));
+					}
+				}
 			}
 			else {
 				if ((dir = opendir(".")) != NULL) {
 					while ((ent = readdir(dir)) != NULL) {
-						if (ent->d_name[0] != '.') {
-							stat(ent->d_name, &path_stat);
-							if (S_ISDIR(path_stat.st_mode)) {
-								aux[1] = strdup(ent->d_name);
-								cmd_list(aux, 2);
-							}
-							acu = acu + 1;
-							flags[acu] = strdup(ent->d_name);
-						}
+						aux[1] = strdup(ent->d_name);
+						cmd_list(aux, 2);
 					}
-					cmd_query(flags, acu + 1);
 					closedir(dir);
 				}
 				else {
@@ -524,8 +545,25 @@ int cmd_list(char *flags[], int nargs) {
 					if (!stat(flags[i], &path_stat)) {
 						if ((dir = opendir(".")) != NULL) {
 							while ((ent = readdir(dir)) != NULL) {
-								if (!strcmp(flags[i], ent->d_name) && (ent->d_name[0] != '.')) {
+								if ((!strcmp(flags[i], ent->d_name)) && (ent->d_name[0] != '.')) {
 									printf("%s %ld\n", ent->d_name, path_stat.st_size);
+									stat(flags[i], &path_stat);
+									if (S_ISDIR(path_stat.st_mode)) {
+										chdir(flags[i]);
+										if ((dir=opendir(".")) != NULL) {
+											while ((ent = readdir(dir)) != NULL) {
+												if (ent->d_name[0] != '.') {
+													stat(ent->d_name, &path_stat);
+													printf("%s %ld\n", ent->d_name, path_stat.st_size);
+												}
+											}
+											closedir(dir);
+										}
+										else {
+											return ERROR_LISTING;
+										}
+										chdir("..");
+									}
 								}
 							}
 							closedir(dir);
@@ -541,15 +579,10 @@ int cmd_list(char *flags[], int nargs) {
 			}
 			else {
 				if ((dir = opendir(".")) != NULL) {
+					aux[1] = strdup("-n");
 					while ((ent = readdir(dir)) != NULL) {
-						if (ent->d_name[0] != '.') {
-							if (!stat(ent->d_name,&path_stat)) {
-								printf("%s %ld\n", ent->d_name, path_stat.st_size);
-							}
-							else {
-								printf("cannot access %s: %s\n",ent->d_name, strerror(errno));
-							}
-						}
+						aux[2] = strdup(ent->d_name);
+						cmd_list(aux, 3);
 					}
 					closedir(dir);
 				}
@@ -560,17 +593,49 @@ int cmd_list(char *flags[], int nargs) {
 			break;
 		case 2:
 			if (nargs>2) {
-				deleteAtPosition(flags, &nargs, 1);
-				cmd_query(flags, nargs);
+				for (i = 2; i < nargs; i++) {
+					if (!stat(flags[i], &path_stat)) {
+						if ((dir = opendir(".")) != NULL) {
+							while ((ent = readdir(dir)) != NULL) {
+								if (!strcmp(flags[i], ent->d_name)) {
+									aux[1] = strdup(ent->d_name);
+									cmd_query(aux,2);
+									stat(ent->d_name, &path_stat);
+									if (S_ISDIR(path_stat.st_mode)) {
+										if (strcmp(ent->d_name,".") && strcmp(ent->d_name, "..")) {
+											chdir(ent->d_name);
+											if ((dir = opendir(".")) != NULL) {
+												while ((ent = readdir(dir)) != NULL) {
+													aux[1] = strdup(ent->d_name);
+													cmd_query(aux, 2);
+												}
+												closedir(dir);
+											} else {
+												return ERROR_LISTING;
+											}
+											chdir("..");
+										}
+									}
+								}
+							}
+							closedir(dir);
+						}
+						else {
+							return ERROR_LISTING;
+						}
+					}
+					else {
+						printf("cannot access %s: %s\n",flags[i], strerror(errno));
+					}
+				}
 			}
 			else {
 				if ((dir = opendir(".")) != NULL) {
+					aux[1] = strdup("-h");
 					while ((ent = readdir(dir)) != NULL) {
-						acu = acu + 1;
-						flags[acu] = strdup(ent->d_name);
-						printf("%s\n", flags[acu]);
+						aux[2] = strdup(ent->d_name);
+						cmd_list(aux, 3);
 					}
-					cmd_query(flags, acu + 1);
 					closedir(dir);
 				}
 				else {
@@ -586,6 +651,21 @@ int cmd_list(char *flags[], int nargs) {
 							while ((ent = readdir(dir)) != NULL) {
 								if (!strcmp(flags[i], ent->d_name)) {
 									printf("%s %ld\n", ent->d_name, path_stat.st_size);
+									stat(ent->d_name, &path_stat);
+									if (S_ISDIR(path_stat.st_mode)) {
+										if (strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..")) {
+											chdir(ent->d_name);
+											if ((dir = opendir(".")) != NULL) {
+												while ((ent = readdir(dir)) != NULL) {
+													printf("%s %ld\n", ent->d_name, path_stat.st_size);
+												}
+												closedir(dir);
+											} else {
+												return ERROR_LISTING;
+											}
+											chdir("..");
+										}
+									}
 								}
 							}
 							closedir(dir);
@@ -601,13 +681,11 @@ int cmd_list(char *flags[], int nargs) {
 			}
 			else {
 				if ((dir = opendir(".")) != NULL) {
+					aux[1] = strdup("-h");
+					aux[2] = strdup("-n");
 					while ((ent = readdir(dir)) != NULL) {
-						if (!stat(ent->d_name,&path_stat)) {
-							printf("%s %ld\n", ent->d_name, path_stat.st_size);
-						}
-						else {
-							printf("cannot access %s: %s\n",ent->d_name, strerror(errno));
-						}
+						aux[3] = strdup(ent->d_name);
+						cmd_list(aux, 4);
 					}
 					closedir(dir);
 				}
@@ -617,79 +695,191 @@ int cmd_list(char *flags[], int nargs) {
 			}
 			break;
 		case 5:
+			//printf("1");
 			if (nargs > 2) {
-				if ((dir = opendir(".")) != NULL) {
-					for (i = 2; i<nargs; i++ ) {
-						while((ent = readdir(dir)) != NULL) {
-							if (!strcmp(ent->d_name, flags[i])) {
-
+				//printf("%d\n", nargs);
+				for (i = 2; i<nargs; i++ ) {
+					if ((dir = opendir(".")) != NULL) {
+						if (!stat(flags[i], &path_stat)) {
+							while ((ent = readdir(dir)) != NULL) {
+								//printf("%s --- %s\n", ent->d_name, flags[i]);
+								if ((!strcmp(ent->d_name, flags[i])) && (ent->d_name[0] != '.')) {
+									//printf("1\n");
+									aux[1] = strdup(ent->d_name);
+									//printf("%s\n", aux[1]);
+									cmd_query(aux, 2);
+									stat(ent->d_name, &path_stat);
+									if (S_ISDIR(path_stat.st_mode)) {
+										chdir(ent->d_name);
+										aux[1] = strdup("-r");
+										cmd_list(aux, 2);
+										chdir("..");
+									}
+								}
 							}
+						} else {
+							printf("cannot access %s: %s\n", flags[i], strerror(errno));
 						}
+						closedir(dir);
 					}
+					else {
+						return ERROR_LISTING;
+					}
+				}
+			}
+			else {
+				if ((dir = opendir(".")) != NULL) {
+					aux[1] = strdup("-r");
+					while ((ent = readdir(dir)) != NULL) {
+						aux[2] = strdup(ent->d_name);
+						cmd_list(aux, 3);
+					}
+					closedir(dir);
 				}
 				else {
 					return ERROR_LISTING;
 				}
 			}
+			break;
+		case 6:
+			if (nargs > 3) {
+				for (i = 3; i<nargs; i++ ) {
+					if ((dir = opendir(".")) != NULL) {
+						if (!stat(flags[i], &path_stat)) {
+							while ((ent = readdir(dir)) != NULL) {
+								if ((!strcmp(ent->d_name, flags[i])) && (ent->d_name[0] != '.')) {
+									stat(ent->d_name, &path_stat);
+									printf("%s %ld\n", ent->d_name, path_stat.st_size);
+									if (S_ISDIR(path_stat.st_mode)) {
+										chdir(ent->d_name);
+										aux[1] = strdup("-r");
+										aux[2] = strdup("-n");
+										cmd_list(aux, 3);
+										chdir("..");
+									}
+								}
+							}
+						} else {
+							printf("cannot access %s: %s\n", flags[i], strerror(errno));
+						}
+						closedir(dir);
+					}
+					else {
+						return ERROR_LISTING;
+					}
+				}
+			}
 			else {
 				if ((dir = opendir(".")) != NULL) {
+					aux[1] = strdup("-r");
+					aux[2] = strdup("-n");
 					while ((ent = readdir(dir)) != NULL) {
-						if (strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..")) {
-							stat(ent->d_name, &path_stat);
-							if (S_ISDIR(path_stat.st_mode)) {
-								chdir(ent->d_name);
-								cmd_list(flags, nargs);
-								chdir("..");
-							}
-							aux[1] = strdup(ent->d_name);
-							cmd_list(aux, 2);
-						}
+						aux[3] = strdup(ent->d_name);
+						cmd_list(aux, 4);
 					}
 					closedir(dir);
-				} else {
+				}
+				else {
 					return ERROR_LISTING;
 				}
 			}
 			break;
-		case 6:
-			break;
 		case 7:
+			if (nargs > 3) {
+				for (i = 3; i<nargs; i++ ) {
+					if ((dir = opendir(".")) != NULL) {
+						if (!stat(flags[i], &path_stat)) {
+							while ((ent = readdir(dir)) != NULL) {
+								if (!strcmp(ent->d_name, flags[i])) {
+									aux[1] = ent->d_name;
+									cmd_query(aux, 2);
+									stat(ent->d_name, &path_stat);
+									if (S_ISDIR(path_stat.st_mode)) {
+										if (strcmp(ent->d_name,".") && strcmp(ent->d_name, "..")) {
+											chdir(ent->d_name);
+											aux[1] = strdup("-r");
+											aux[2] = strdup("-h");
+											cmd_list(aux, 3);
+											chdir("..");
+										}
+									}
+								}
+							}
+						} else {
+							printf("cannot access %s: %s\n", flags[i], strerror(errno));
+						}
+						closedir(dir);
+					}
+					else {
+						return ERROR_LISTING;
+					}
+				}
+			}
+			else {
+				if ((dir = opendir(".")) != NULL) {
+					aux[1] = strdup("-r");
+					aux[2] = strdup("-h");
+					while ((ent = readdir(dir)) != NULL) {
+						aux[3] = strdup(ent->d_name);
+						cmd_list(aux, 4);
+					}
+					closedir(dir);
+				}
+				else {
+					return ERROR_LISTING;
+				}
+			}
 			break;
 		case 8:
+			if (nargs > 4) {
+				for (i = 4; i<nargs; i++ ) {
+					if ((dir = opendir(".")) != NULL) {
+						if (!stat(flags[i], &path_stat)) {
+							while ((ent = readdir(dir)) != NULL) {
+								if (!strcmp(ent->d_name, flags[i])) {
+									stat(ent->d_name, &path_stat);
+									printf("%s %ld\n", ent->d_name, path_stat.st_size);
+									if (S_ISDIR(path_stat.st_mode)) {
+										if (strcmp(ent->d_name, "..") && strcmp(ent->d_name,".")) {
+											chdir(ent->d_name);
+											aux[1] = strdup("-r");
+											aux[2] = strdup("-n");
+											aux[3] = strdup("-h");
+											cmd_list(aux, 4);
+											chdir("..");
+										}
+									}
+								}
+							}
+						} else {
+							printf("cannot access %s: %s\n", flags[i], strerror(errno));
+						}
+						closedir(dir);
+					}
+					else {
+						return ERROR_LISTING;
+					}
+				}
+			}
+			else {
+				if ((dir = opendir(".")) != NULL) {
+					aux[1] = strdup("-r");
+					aux[2] = strdup("-n");
+					aux[3] = strdup("-h");
+					while ((ent = readdir(dir)) != NULL) {
+						aux[4] = strdup(ent->d_name);
+						cmd_list(aux, 5);
+					}
+					closedir(dir);
+				}
+				else {
+					return ERROR_LISTING;
+				}
+			}
 			break;
 		default:
 			break;
 	}
-	/*
-	//Declaramos variables, estructuras
-	struct stat estru;
-	struct dirent *dt;
-	DIR *dire;
-
-	dire = opendir(nombre);
-
-	printf("abriendo el directorio %s\n",nombre);
-	//Recorrer directorio
-	while((dt=readdir(dire))!=NULL){
-		//strcmp permite comparar, si la comparación es verdadera devuelve un 0
-		//Aquí se pregunta si el arhivo o directorio es distinto de . y ..
-		//Para así asegurar que se muestre de forma recursiva los directorios y ficheros del directorio actual
-		if((strcmp(dt->d_name,".")!=0)&&(strcmp(dt->d_name,"..")!=0)){
-			stat(dt->d_name,&estru);
-			//Si es un directorio, llamar a la misma función para mostrar archivos
-			if(S_ISDIR(estru.st_mode)){
-				lista_directorio(dt->d_name);
-				//Si no es directorio, mostrar archivos
-			}else{
-				imprime_permisos(estru);
-				printf("%-20s %d \n",dt->d_name,estru.st_size);
-			}
-		}
-
-	}
-	closedir(dire);
-
-} */
 	return 0;
 }
 
