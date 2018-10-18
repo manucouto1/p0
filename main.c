@@ -389,6 +389,14 @@ int cmd_query(char *flags[], int nargs) {
  	return 0;
 }
 
+void deleteAtPosition (char* flags[], int* nargs,int pos) {
+	int i;
+	for (i = pos; i<*nargs-1; i++) {
+		flags [i] = flags [i+1];
+	}
+	*nargs = *nargs - 1;
+}
+
 int cmd_list(char *flags[], int nargs) {
 	/*
 	 * TODO - Lista los directorios y/o archivos proporcionados por los argumentos de linea de comandos
@@ -401,20 +409,69 @@ int cmd_list(char *flags[], int nargs) {
 	 */
 	struct stat path_stat;
 	int index = 0, acu = 0;
+	int i;
 	int nflag = 0, hflag = 0, rflag = 0, sumf = 0;
 	DIR *dir;
 	struct dirent *ent;
-	char *aux[256];
+	char *aux[1024]={flags[0]};
 	while ((index = getopt(nargs, flags, "nhr")) != -1) {
 		switch (index) {
 			case 'n':
-				nflag = 1;
+				switch (optind) {
+					case 2:
+						nflag = 1;
+						break;
+					case 3:
+						if (rflag || hflag) {
+							nflag = 1;
+						}
+						break;
+					case 4:
+						if (rflag && hflag) {
+							nflag = 1;
+						}
+						break;
+					default:
+						break;
+				}
 				break;
 			case 'h':
-				hflag = 2;
+				switch (optind) {
+					case 2:
+						hflag = 2;
+						break;
+					case 3:
+						if (rflag || nflag) {
+							hflag = 2;
+						}
+						break;
+					case 4:
+						if (rflag && nflag) {
+							hflag = 2;
+						}
+						break;
+					default:
+						break;
+				}
 				break;
 			case 'r':
-				rflag = 5;
+				switch (optind) {
+					case 2:
+						rflag = 5;
+						break;
+					case 3:
+						if (hflag || nflag) {
+							rflag = 5;
+						}
+						break;
+					case 4:
+						if (hflag && nflag) {
+							rflag = 5;
+						}
+						break;
+					default:
+						break;
+				}
 				break;
 			default:
 				break;
@@ -424,24 +481,40 @@ int cmd_list(char *flags[], int nargs) {
 	sumf = nflag + hflag + rflag;
 	switch (sumf) {
 		case 0:
-			if ((dir = opendir(".")) != NULL) {
-				while ((ent = readdir(dir)) != NULL) {
-					if (ent->d_name[0] != '.') {
-						acu = acu + 1;
-						strcpy(flags[acu],ent->d_name);
-						//printf("%s\n",flags[acu]);
+			if (nargs>1) {
+				for (i = 1; i< nargs; i++) {
+					if (flags[i][0] == '.') {
+						deleteAtPosition(flags,&nargs, i);
 					}
 				}
-				closedir(dir);
-				//cmd_query(flags, acu);
+				cmd_query(flags, nargs);
+
+				if ()
 			}
 			else {
-				return ERROR_LISTING;
+				if ((dir = opendir(".")) != NULL) {
+					while ((ent = readdir(dir)) != NULL) {
+						if (ent->d_name[0] != '.') {
+							stat(ent->d_name, &path_stat);
+							if (S_ISDIR(path_stat.st_mode)) {
+								aux[1] = strdup(ent->d_name);
+								cmd_list(aux, 2);
+							}
+							acu = acu + 1;
+							flags[acu] = strdup(ent->d_name);
+						}
+					}
+					cmd_query(flags, acu + 1);
+					closedir(dir);
+				}
+				else {
+					return ERROR_LISTING;
+				}
 			}
 			break;
 		case 1:
 			if (nargs > 2) {
-				for (int i = 2; i < nargs; i++) {
+				for (i = 2; i < nargs; i++) {
 					if (!stat(flags[i], &path_stat)) {
 						if ((dir = opendir(".")) != NULL) {
 							while ((ent = readdir(dir)) != NULL) {
@@ -480,10 +553,28 @@ int cmd_list(char *flags[], int nargs) {
 			}
 			break;
 		case 2:
+			if (nargs>2) {
+				deleteAtPosition(flags, &nargs, 1);
+				cmd_query(flags, nargs);
+			}
+			else {
+				if ((dir = opendir(".")) != NULL) {
+					while ((ent = readdir(dir)) != NULL) {
+						acu = acu + 1;
+						flags[acu] = strdup(ent->d_name);
+						printf("%s\n", flags[acu]);
+					}
+					cmd_query(flags, acu + 1);
+					closedir(dir);
+				}
+				else {
+					return ERROR_LISTING;
+				}
+			}
 			break;
 		case 3:
 			if (nargs > 3) {
-				for (int i = 3; i < nargs; i++) {
+				for (i = 3; i < nargs; i++) {
 					if (!stat(flags[i], &path_stat)) {
 						if ((dir = opendir(".")) != NULL) {
 							while ((ent = readdir(dir)) != NULL) {
@@ -520,6 +611,39 @@ int cmd_list(char *flags[], int nargs) {
 			}
 			break;
 		case 5:
+			if (nargs > 2) {
+				if ((dir = opendir(".")) != NULL) {
+					for (i = 2; i<nargs; i++ ) {
+						while((ent = readdir(dir)) != NULL) {
+							if (!strcmp(ent->d_name, flags[i])) {
+
+							}
+						}
+					}
+				}
+				else {
+					return ERROR_LISTING;
+				}
+			}
+			else {
+				if ((dir = opendir(".")) != NULL) {
+					while ((ent = readdir(dir)) != NULL) {
+						if (strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..")) {
+							stat(ent->d_name, &path_stat);
+							if (S_ISDIR(path_stat.st_mode)) {
+								chdir(ent->d_name);
+								cmd_list(flags, nargs);
+								chdir("..");
+							}
+							aux[1] = strdup(ent->d_name);
+							cmd_list(aux, 2);
+						}
+					}
+					closedir(dir);
+				} else {
+					return ERROR_LISTING;
+				}
+			}
 			break;
 		case 6:
 			break;
@@ -530,43 +654,6 @@ int cmd_list(char *flags[], int nargs) {
 		default:
 			break;
 	}
-
-	/*if (flags[1]=="-n") {
-		if (flags[2]=="-h") {
-			if (flags[3] == "-r") {
-
-			}
-			else {
-
-			}
-		}
-		else {
-			if (flags[2]=="-r") {
-
-			}
-			else{
-
-			}
-		}
-	}
-	else {
-		if (flags[1]=="-h") {
-			if (flags[2] == "-r") {
-
-			}
-			else {
-
-			}
-		}
-		else {
-			if (flags[1] == "-r") {
-
-			}
-			else {
-
-			}
-		}
-	}*/
 	/*
 	//Declaramos variables, estructuras
 	struct stat estru;
