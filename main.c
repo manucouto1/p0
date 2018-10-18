@@ -340,41 +340,47 @@ int cmd_delete(char *flags[], int nargs) {
 
 }
 
+/* - LIST/QUERY util functions */
 int print_li(char *element, char *permisos){
 
 	struct stat fileStat;
+	struct passwd *pw;
+	struct group *gr;
+	struct tm *tm;
+	FILE *file;
+	char buf[200];
 
-	if(stat(element, &fileStat)==0){
-		ConvierteModo(fileStat.st_mode,permisos);
-		struct passwd *pw = getpwuid(fileStat.st_uid);
-		struct group *gr = getgrgid(fileStat.st_gid);
+	if( (stat(element, &fileStat)==0)&&((file=fopen(element,"r"))!=NULL)){
+		permisos = ConvierteModo2(fileStat.st_mode);
+		pw = getpwuid(fileStat.st_uid);
+		gr = getgrgid(fileStat.st_gid);
 		time_t t = fileStat.st_mtim.tv_sec;
-		struct tm *tm = localtime(&t);
-		char buf[200];
+		tm = localtime(&t);
 
-		strftime(buf, sizeof(buf), "%d.%m.%Y %H:%M:%S", tm);
+		fseek(file, 0L, SEEK_END);
+		strftime(buf, sizeof(buf), "%b %d %H:%M", tm);
+
 		printf("%ju ", fileStat.st_ino);
-		printf("\t %s ", permisos);
-		printf("\t %s ", pw->pw_name);
-		printf("\t %s ", gr->gr_name);
-		printf("\t %ld ", fileStat.st_size);
-		printf("\t %s ",buf);
-		printf("\t %s", element);
-
+		printf("%-5s ", permisos);
+		printf("%-1ld ", (long) fileStat.st_nlink);
+		printf("%-5s ", pw->pw_name);
+		printf("%-5s ", gr->gr_name);
+		printf("%-5d ", ftell(file));
+		printf("%-5s ",buf);
 		//printf("\t %s %d %d:%d ", tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min);
-		printf("\n");
 
 	} else {
 		printf("Error >>%s<<\n", strerror(errno));
 	}
 }
+/* - end LIST/QUERY util functions */
 
 int cmd_query(char *flags[], int nargs) {
 	/*
-	 * TODO - Devuelve informacion de los archivos/directorios pasados como argumentos
-	 * TODO - Produce una linea por arch/dir pasado como argumento
+	 * DONE - Devuelve informacion de los archivos/directorios pasados como argumentos
+	 * DONE - Produce una linea por arch/dir pasado como argumento
 	 * TODO - mismo formato que ls -li resolviendo links simbolicos si es necesario
-	 * TODO - equivalente a ls -li para archivos y que ls -lid para directorios
+	 * DONE - equivalente a ls -li para archivos y que ls -lid para directorios
 	 */
 
 	int i;
