@@ -395,6 +395,8 @@ int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int
 	DIR *dir;
 	struct dirent *ent;
 	struct element_description description;
+	char current[1024];
+	getcwd(current, 1024);
 
 	if ((nivel<=1) || argR) {
 		if (S_ISDIR(path_stat.st_mode)) {
@@ -410,8 +412,10 @@ int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int
 					}
 				}
 				closedir(dir);
-				nivel--;
-				if (strcmp(elemento, "."))chdir("..");
+				if (!strcmp(elemento, "..")) {
+					chdir(current);
+				}
+				else if (strcmp(elemento, ".")) chdir("..");
 			}
 		}
 	}
@@ -480,6 +484,10 @@ int cmd_list(char *flags[], int nargs){
 
 }
 
+int cmd_allocate (char *flags[], int nargs) {
+
+}
+
 struct{
 	char * CMD_NAME;
 	int (*CMD_FUN)(char * trozos[], int nargs);
@@ -496,6 +504,8 @@ struct{
 		{"exit",cmd_exit},
 		{"end",cmd_exit},
 		{"fin",cmd_exit},
+		{"allocate", cmd_allocate},
+		{NULL, NULL},
 
 		{NULL, NULL}
 };
