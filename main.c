@@ -483,8 +483,54 @@ int cmd_list(char *flags[], int nargs){
 
 
 }
-
+/*
+ * TODO Allocate | reserva memoria y la guarda en la lista, si no se le pasan argumentos muestra los elementos de la lista
+ * TODO -malloc [tam] | se le indica el tamaño devuelve la direccion de memoria, sin argumentos lista elementos
+ * TODO -mmap fich [perm]
+ * TODO -createshared [cl] [tam]
+ * TODO -shared [cl]
+ */
 int cmd_allocate (char *flags[], int nargs) {
+
+}
+
+/*
+ * TODO Delocate | lobera una de las direcciones de memorias reservadas en la lista, sin argumentos lista las direcciones
+ * TODO -malloc [tam] | Se elimina uno de los bloques de tamaño [tam] de la lista, si no hay o no se pasa argumento lista
+ * TODO -mmap fich | deshace un mapeo del fichero <-> memoria y borra de lista, 
+ */
+int cmd_dealocate (char *flags[], int nargs){
+
+}
+
+/*
+ *
+ */
+int cmd_rmkey (char *flags[], int nargs){
+
+}
+
+/*
+ *
+ *
+ */
+int cmd_mem (char *flags[], int nargs){
+
+}
+
+int cmd_memDump (char *flags[], int nargs){
+
+}
+
+int cmd_recursiveFunction (char *flags[], int nargs){
+
+}
+
+int cmd_read (char *flags[], int nargs){
+
+}
+
+int cmd_write (char *flags[], int nargs){
 
 }
 
@@ -501,10 +547,18 @@ struct{
 		{"delete", cmd_delete},
 		{"query", cmd_query},
 		{"list", cmd_list},
+		{"allocate", cmd_allocate},
+		{"deallocate", cmd_dealocate},
+		{"rmkey", cmd_rmkey},
+		{"mem", cmd_mem},
+		{"memdump", cmd_memDump},
+		{"recursivefunction", cmd_recursiveFunction},
+		{"read", cmd_read},
+		{"write", cmd_write},
 		{"exit",cmd_exit},
 		{"end",cmd_exit},
 		{"fin",cmd_exit},
-		{"allocate", cmd_allocate},
+
 		{NULL, NULL},
 
 		{NULL, NULL}
