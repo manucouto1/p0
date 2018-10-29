@@ -497,7 +497,7 @@ int cmd_allocate (char *flags[], int nargs) {
 /*
  * TODO Delocate | lobera una de las direcciones de memorias reservadas en la lista, sin argumentos lista las direcciones
  * TODO -malloc [tam] | Se elimina uno de los bloques de tamaño [tam] de la lista, si no hay o no se pasa argumento lista
- * TODO -mmap fich | deshace un mapeo del fichero <-> memoria y borra de lista, 
+ * TODO -mmap fich | deshace un mapeo del fichero <-> memoria y borra de lista,
  */
 int cmd_dealocate (char *flags[], int nargs){
 
