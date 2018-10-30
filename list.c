@@ -92,12 +92,12 @@ tNodo getItem (tPosL p, tList l) {
 	return l.Array[p];
 }
 
-int main() {
+/*int main() {
 	tList l;
 	createEmptyList(&l);
 	tNodo c ;
 
-	/*for (int i = 1; i <= 10; i++ ) {
+	for (int i = 1; i <= 10; i++ ) {
 		c.dato = i;
 		if (insertItem(c, NIL, &l)) {
 			printf("Jorge Ponce\n");
@@ -108,5 +108,5 @@ int main() {
 	printf("%d\n", first(l));
 	printf("%d\n", last(l));
 	printf("%d\n", previous(last(l), l));
-	printf("%d\n", next(last(l), l));*/
-}
+	printf("%d\n", next(last(l), l));
+}*/

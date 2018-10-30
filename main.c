@@ -23,6 +23,14 @@
 
 #define clear() printf("\033[H\033[J")
 
+typedef struct {
+
+	tList lista;
+	int nargs;
+	char* flags[1024];
+
+} container;
+
 struct element_description{
 	uintmax_t nInodo;
 	char permisos[12];
@@ -89,21 +97,21 @@ char * ConvierteModo2 (mode_t m)
 }
 
 
-int cmd_autores(char * flags[], int nargs){
+int cmd_autores(container* c){
 	int i = 1;
 
 	char *autores[2] = {"Manuel Couto Pintos","Victor Escudero Gonzalez"};
 	char *correos[2] = {"manuel.couto1@udc.es", "victor.escudero@udc.es"};
 
-	switch(nargs){
+	switch(c->nargs){
 		case 1 :
 			printf("%s\t%s\n", autores[0], autores[1]);
 			printf("%s\t%s\n", correos[0], correos[1]);
 			break;
 		case 2 :
-			if(!strcmp(flags[i],"-n")){
+			if(!strcmp(c->flags[i],"-n")){
 				printf("%s\t%s\n", autores[0], autores[1]);
-			} else if(!strcmp(flags[i],"-l")) {
+			} else if(!strcmp(c->flags[i],"-l")) {
 				printf("%s\t%s\n", correos[0], correos[1]);
 			} else {
 				return COMANDO_INVALIDO;
@@ -117,13 +125,13 @@ int cmd_autores(char * flags[], int nargs){
 
 }
 
-int cmd_pid(char * flags[], int num) {
-	switch (num) {
+int cmd_pid(container* c) {
+	switch (c->nargs) {
 		case 1:
 			printf("Process ID: %d", getpid());
 			return 0;
 		case 2:
-			if (!strcmp(flags[1],"-p")) {
+			if (!strcmp(c->flags[1],"-p")) {
 				printf("PPID: %d", getppid());
 				return 0;
 			}
@@ -143,10 +151,10 @@ void time_util(char * fecha[]){
 	trocearCadena(asctime(t), fecha);
 }
 
-int cmd_hora (char * flags[], int num){
+int cmd_hora (container* c){
 	char * fecha[100];
 	time_util(fecha);
-	switch (num) {
+	switch (c->nargs) {
 		case 1 :
 			printf("%s", fecha[3]);
 			return 0;
@@ -167,17 +175,17 @@ int cmd_fecha (char * flags[], int num) {
 	}
 }
 
-int cmd_chdir(char * flags[], int nargs){
+int cmd_chdir(container* c){
 	char dir[1024];
 
-	switch ( nargs ) {
+	switch (c->nargs) {
 		case 1:
 			getcwd(dir,1024);
 			printf("%s",dir);
 			return 0;
 		case 2:
 
-			if(chdir(flags[1])!=0){
+			if(chdir(c->flags[1])!=0){
 				sprintf(dir," chdir: %s", strerror(errno));
 				printf("%s", dir);
 			};
@@ -191,17 +199,17 @@ int cmd_exit(char * flags[], int nargs) {
 	return 1;
 }
 
-int cmd_create(char *flags[], int nargs) {
+int cmd_create(container* c) {
 	int fd;
 
-	switch (nargs) {
+	switch (c->nargs) {
 		case 2:
-			fd = open(flags[1], O_WRONLY | O_APPEND | O_CREAT, 0644);
+			fd = open(c->flags[1], O_WRONLY | O_APPEND | O_CREAT, 0644);
 			close(fd);
 			return 0;
 		case 3:
-			if(!strcmp(flags[1],"-d")){
-				if(!mkdir(flags[2],0777)){
+			if(!strcmp(c->flags[1],"-d")){
+				if(!mkdir(c->flags[2],0777)){
 					return 0;
 				} else {
 					printf("cannot create: %s\n", strerror(errno));
@@ -371,7 +379,7 @@ void print_element(struct element_description elements_description, int argN){
 	}
 }
 
-int cmd_query(char *flags[], int nargs) {
+int cmd_query(container* c) {
 	/*
 	 * DONE - Devuelve informacion de los archivos/directorios pasados como argumentos
 	 * DONE - Produce una linea por arch/dir pasado como argumento
@@ -382,8 +390,8 @@ int cmd_query(char *flags[], int nargs) {
 	int i;
 	struct element_description description;
 
-	for(i = 1; i<nargs; i++){
-		if (load_data(flags[i], &description)) {
+	for(i = 1; i<c->nargs; i++){
+		if (load_data(c->flags[i], &description)) {
 			print_element(description, 0);
 		}
 	}
@@ -430,7 +438,7 @@ int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int
 
 }
 
-int cmd_list(char *flags[], int nargs){
+int cmd_list(char* flags[], int nargs){
 	int i=1;
 	int nCount=0;
 	int rCount=0;
@@ -491,11 +499,12 @@ int cmd_list(char *flags[], int nargs){
  * TODO -createshared [cl] [tam]
  * TODO -shared [cl]
  */
-int cmd_allocate (char *flags[], int nargs) {
-	switch (nargs) {
+int cmd_allocate (container* c) {
+	switch (c->nargs) {
 		case 1:
 			break;
 		case 2:
+			break;
 	}
 }
 
@@ -504,19 +513,19 @@ int cmd_allocate (char *flags[], int nargs) {
  * TODO -malloc [tam] | Se elimina uno de los bloques de tamaño [tam] de la lista, si no hay o no se pasa argumento lista
  * TODO -mmap fich | deshace un mapeo del fichero <-> memoria y borra de lista,
  */
-int cmd_dealocate (char *flags[], int nargs){
+int cmd_dealocate (container* c){
 
 }
 /*
  *TODO rmkey cl | Elimina la región de memoria compartida de llave cl. Simplemente es una llamada a shmctl(id, IPC RMID ...)
  */
-int cmd_rmkey (char *flags[], int nargs){
+int cmd_rmkey (container* c){
 
 }
 /*
  *TODO mem | Imprime la dirección de memoria de 3 funciones del programa, tres variables globales y tres variables locales
  */
-int cmd_mem (char *flags[], int nargs){
+int cmd_mem (container* c){
 
 }
 /*
@@ -530,7 +539,7 @@ int cmd_memDump (char *flags[], int nargs){
 /*
  *
  */
-int cmd_recursiveFunction (int n){
+void auxRecursive (int n) {
 	char automatico[1024];
 	static char estatico[1024];
 
@@ -538,8 +547,16 @@ int cmd_recursiveFunction (int n){
 	printf ("array estatico en: %p \n",estatico);
 	printf ("array automatico en: %p\n",automatico);
 	n--;
-	if (n>0)
-		cmd_recursiveFunction(n);
+
+	if (n>0) auxRecursive(n);
+};
+int cmd_recursiveFunction (container* c){
+
+	if (c->nargs == 2) {
+		auxRecursive((int) strtoimax(c->flags[1], NULL, 10));
+	}
+	else return COMANDO_INVALIDO;
+
 	return 0;
 }
 
@@ -547,7 +564,7 @@ int cmd_recursiveFunction (int n){
  * TODO read fich addr | Lee fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
  * TODO read fich addr cont | Lee cont bytes de fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
  */
-int cmd_read (char *flags[], int nargs){
+int cmd_read (container* c){
 
 }
 
@@ -555,13 +572,13 @@ int cmd_read (char *flags[], int nargs){
  * TODO write file addr cont [-o] | Escribe cont bytes de addr en file. Si file no existe se crea.
  * TODO Si ya existe, no se sobreescribe a menos que se le pase -o
  */
-int cmd_write (char *flags[], int nargs){
+int cmd_write (container* c){
 
 }
 
 struct{
 	char * CMD_NAME;
-	int (*CMD_FUN)(char * trozos[], int nargs);
+	int (*CMD_FUN)(container* c);
 } CMDS[] = {
 		{"autores",cmd_autores},
 		{"pid", cmd_pid},
@@ -577,7 +594,7 @@ struct{
 		{"rmkey", cmd_rmkey},
 		{"mem", cmd_mem},
 		{"memdump", cmd_memDump},
-		{"recursivefunction", NULL},
+		{"recursivefunction", cmd_recursiveFunction},
 		{"read", cmd_read},
 		{"write", cmd_write},
 		{"exit",cmd_exit},
@@ -586,26 +603,26 @@ struct{
 		{NULL, NULL}
 };
 
-int cmdManager(char *trozos[], int ntrozos){
+int cmdManager(container* c){
 	int i;
 	for(i = 0; CMDS[i].CMD_NAME != NULL; i++){
-		if(!strcmp(CMDS[i].CMD_NAME,trozos[0])){
-			/*if (!strcmp(trozos[0], "recursivefunction")) {
-				return cmd_recursiveFunction((int) strtoimax(trozos[1], NULL, 10));
-			}*/
-			return  CMDS[i].CMD_FUN(trozos, ntrozos);
+		if(!strcmp(CMDS[i].CMD_NAME,c->flags[0])){
+			return  CMDS[i].CMD_FUN(c);
 		}
 	}
 	return COMANDO_INVALIDO;
 }
 
-int procesarEntrada(char * cadena){
+int procesarEntrada(char * cadena, container* c){
 
 	char * trozos [1024];
 	int ntrozos;
 
 	if((ntrozos = trocearCadena(cadena, trozos))){
-		return cmdManager(trozos,ntrozos);
+		memcpy(&c->flags, &trozos, sizeof(trozos));
+		c->nargs = ntrozos;
+
+		return cmdManager(c);
 	}
 	return 0;
 }
@@ -622,14 +639,16 @@ int main() {
 
 	clear();
 	char * entrada ;
+	container c;
 	int salir = 0;
 	entrada = malloc(1024);
 	createEmptyList(&l);
+	c.lista = l;
 
 	while ((salir<=0)) {
 		imprimirPrompt();
 		leerEntrada(entrada);
-		salir = procesarEntrada(entrada);
+		salir = procesarEntrada(entrada, &c);
 		if(salir<0)printf("%s",ERROR_MESAGES[abs(salir)]);
 	}
 	free(entrada);
