@@ -1,9 +1,15 @@
 #define MAX 6400
 
-typedef void *tDato;
+typedef int tSize;
+typedef char *tTime, *tType;
+typedef void *tAddr;
 
 typedef struct {
-	tDato dato;
+	tAddr addr;
+	tSize size;
+	tTime time;
+	tType type;
+
 }tNodo;
 
 typedef int tPosL;
@@ -13,14 +19,14 @@ typedef struct {
 	tPosL fin;
 }tList;
 
-int createEmptyList(tList list);
+void createEmptyList(tList* list);
 int isEmptyList (tList list);
 tPosL first (tList list);
 tPosL last (tList list);
 tPosL next (tPosL pos, tList list);
 tPosL previous (tPosL pos, tList list);
-int insertItem (tList list);
-tPosL findItem(tNodo element, tList list);
-int deleteAtPosition (tPosL pos, tList list);
-int updateItem(tList list, tPosL pos, tNodo nodo);
+int insertItem (tNodo item, tPosL pos, tList* l);
+tPosL findItem(tDato dato, tList list);
+void deleteAtPosition (tPosL pos, tList* list);
+void updateItem(tList* list, tPosL pos, tNodo nodo);
 tNodo getItem (tPosL pos, tList list);
