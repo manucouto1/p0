@@ -512,7 +512,6 @@ int cmd_rmkey (char *flags[], int nargs){
 
 /*
  *
- *
  */
 int cmd_mem (char *flags[], int nargs){
 
