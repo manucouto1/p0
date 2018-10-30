@@ -1,8 +1,6 @@
 #include "list.h"
 #include <stdio.h>
 
-#define NIL 0
-
 void createEmptyList(tList* l) {
 	l->fin = NIL;
 }
@@ -54,23 +52,16 @@ int insertItem (tNodo item, tPosL pos, tList* l) {
 	}
 }
 
-tPosL findItem (tType dato, tList l) {
+tPosL findItem (tType dato, tSize tam, tList l) {
 	tPosL p;
 
 	p = first(l);
-	while ((p < l.fin) && (l.Array[p].type != dato)) {
+	while ((p != NIL) && (l.Array[p].type != dato) && (l.Array[p].size != tam)) {
 		p = next(p, l);
 	}
 
-	if (p < l.fin) {
+	if (p <= l.fin) {
 		return p;
-	}
-	else {
-		if (p == l.fin) {
-			if (dato == l.Array[p].type) {
-				return p;
-			}
-		}
 	}
 	return NIL;
 }

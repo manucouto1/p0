@@ -490,6 +490,22 @@ int cmd_list(container *c){
 
 
 }
+
+void printList(tType type, tList l) {
+	tNodo nodo;
+	tPosL i = first(l);
+
+	while ((i != NIL) && (((nodo = getItem(i, l)).type != type) || (type == NULL))) {
+		if (!strcmp(type,"mmap")) {
+			printf("%p: size:%lu %s %s (fd: %d) %s", nodo.addr, nodo.size, nodo.type, nodo.fich, nodo.fd, nodo.time);
+		}
+		else if (!strcmp(type, "shared memory")) {
+			printf("%p: size:%lu %s (key: %d) %s", nodo.addr, nodo.size, nodo.type, nodo.key, nodo.time);
+		}
+		else printf("%p: size:%lu %s %s", nodo.addr, nodo.size, nodo.type, nodo.time);
+		i = next(i,l);
+	}
+}
 /*
  * TODO Allocate | reserva memoria y la guarda en la lista, si no se le pasan argumentos muestra los elementos de la lista
  * TODO -malloc [tam] | se le indica el tamaño devuelve la direccion de memoria, sin argumentos lista elementos
@@ -503,11 +519,11 @@ int cmd_allocate (container* c) {
 			// Mostramos elementos lista
 			break;
 		case 2:
-			if(strcmp(flags[1],"-malloc")) {
+			if(strcmp(c->flags[1],"-malloc")) {
 
-			} else if(strcmp(flags[1],"-nmap")){
+			} else if(strcmp(c->flags[1],"-nmap")){
 
-			} else if(strcmp(flags[1],"-malloc")){
+			} else if(strcmp(c->flags[1],"-malloc")){
 
 			}
 
@@ -520,8 +536,26 @@ int cmd_allocate (container* c) {
  * TODO -malloc [tam] | Se elimina uno de los bloques de tamaño [tam] de la lista, si no hay o no se pasa argumento lista
  * TODO -mmap fich | deshace un mapeo del fichero <-> memoria y borra de lista,
  */
-int cmd_dealocate (container* c){
+int cmd_deallocate (container* c){
+	switch (c->nargs) {
+		case 1:
+			printList(NULL, c->lista);
+			break;
+		case 2:
+			if (!strcmp(c->flags[1], "-malloc")) {
+				printList("malloc", c->lista);
+			}
+			else if (!strcmp(c->flags[1], "-mmap")) {
+				printList("mmap", c->lista);
+			}
+			else printList("shared memory", c->lista);
+			break;
+		case 3:
+			if (!strcmp(c->flags[1], "-malloc")) {
 
+			}
+			break;
+	}
 }
 /*
  *TODO rmkey cl | Elimina la región de memoria compartida de llave cl. Simplemente es una llamada a shmctl(id, IPC RMID ...)
@@ -597,7 +631,7 @@ struct{
 		{"query", cmd_query},
 		{"list", cmd_list},
 		{"allocate", cmd_allocate},
-		{"deallocate", cmd_dealocate},
+		{"deallocate", cmd_deallocate},
 		{"rmkey", cmd_rmkey},
 		{"mem", cmd_mem},
 		{"memdump", cmd_memDump},
