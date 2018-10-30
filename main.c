@@ -24,12 +24,10 @@
 #define clear() printf("\033[H\033[J")
 
 typedef struct {
-
 	tList lista;
 	int nargs;
-	char* flags[1024];
-
-} container;
+	char *flags[1024];
+}container;
 
 struct element_description{
 	uintmax_t nInodo;
@@ -125,7 +123,7 @@ int cmd_autores(container* c){
 
 }
 
-int cmd_pid(container* c) {
+int cmd_pid(container *c) {
 	switch (c->nargs) {
 		case 1:
 			printf("Process ID: %d", getpid());
@@ -163,10 +161,10 @@ int cmd_hora (container* c){
 	}
 }
 
-int cmd_fecha (char * flags[], int num) {
+int cmd_fecha (container *c) {
 	char * fecha[100];
 	time_util(fecha);
-	switch (num) {
+	switch (c->nargs) {
 		case 1:
 			printf("%s, %s/%s/%s", fecha[0], fecha[2], fecha[1], fecha[4]);
 			return 0;
@@ -195,7 +193,7 @@ int cmd_chdir(container* c){
 	}
 }
 
-int cmd_exit(char * flags[], int nargs) {
+int cmd_exit(container *c) {
 	return 1;
 }
 
@@ -270,7 +268,7 @@ int borrar_rec(char *elemento, struct stat path_stat){
 }
 /* - end DELETE util functions */
 
-int cmd_delete(char *flags[], int nargs) {
+int cmd_delete(container *c) {
 	/*
 	 * DONE - Eliminar un fichero o un directorio
 	 * DONE - Si no tiene flag el directorio tiene que estar vacio para ser borrado
@@ -281,29 +279,29 @@ int cmd_delete(char *flags[], int nargs) {
 
 	struct stat path_stat;
 
-	switch ( nargs ) {
+	switch ( c->nargs ) {
 		case 1:
 			return 0;
 		case 2:
-			if (!stat(flags[1], &path_stat)) {
+			if (!stat(c->flags[1], &path_stat)) {
 				if (S_ISDIR(path_stat.st_mode)) {
-					return borrar_directorio(flags[1]);
+					return borrar_directorio(c->flags[1]);
 				} else {
-					return borrar_archivo(flags[1]);
+					return borrar_archivo(c->flags[1]);
 				}
 			}
 			else {
-				printf("cannot delete %s: %s\n",flags[1], strerror(errno));
+				printf("cannot delete %s: %s\n",c->flags[1], strerror(errno));
 			}
 		case 3:
-			if (strcmp(flags[1], "-r")) {
+			if (strcmp(c->flags[1], "-r")) {
 				return COMANDO_INVALIDO;
 			} else {
-				if (!stat(flags[2], &path_stat)) {
-					borrar_rec(flags[2], path_stat);
+				if (!stat(c->flags[2], &path_stat)) {
+					borrar_rec(c->flags[2], path_stat);
 				}
 				else {
-					printf("cannot delete %s: %s\n",flags[2], strerror(errno));
+					printf("cannot delete %s: %s\n",c->flags[2], strerror(errno));
 				}
 			}
 			return 0;
@@ -438,7 +436,7 @@ int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int
 
 }
 
-int cmd_list(char* flags[], int nargs){
+int cmd_list(container *c){
 	int i=1;
 	int nCount=0;
 	int rCount=0;
@@ -449,13 +447,13 @@ int cmd_list(char* flags[], int nargs){
 
 	nivel = 0;
 
-	while(i < nargs && (flags[i][0] == '-')){
+	while(i < c->nargs && (c->flags[i][0] == '-')){
 
-		if(!strcmp(flags[i],"-n")){
+		if(!strcmp(c->flags[i],"-n")){
 			nCount++;
-		} else if(!strcmp(flags[i],"-r")){
+		} else if(!strcmp(c->flags[i],"-r")){
 			rCount++;
-		} else if(!strcmp(flags[i],"-h")){
+		} else if(!strcmp(c->flags[i],"-h")){
 			hCount++;
 		} else {
 			return COMANDO_INVALIDO;
@@ -468,14 +466,14 @@ int cmd_list(char* flags[], int nargs){
 	if((nCount <= 1)&&(rCount <= 1)&& (hCount <= 1)){ // si solo hay flags y no hay argumento Error comando invalido
 		//
 
-		if(nargs!=aux){
+		if(c->nargs!=aux){
 			// Si se pasan argumentos
-			for(aux = aux; aux < nargs; aux++){
-				if (!lstat(flags[aux], &path_stat)) {
-					fun_list_rec(flags[aux], path_stat, nivel, hCount, rCount, nCount);
+			for(aux = aux; aux < c->nargs; aux++){
+				if (!lstat(c->flags[aux], &path_stat)) {
+					fun_list_rec(c->flags[aux], path_stat, nivel, hCount, rCount, nCount);
 				}
 				else {
-					printf("cannot access %s: %s\n", flags[aux], strerror(errno));
+					printf("cannot access %s: %s\n", c->flags[aux], strerror(errno));
 				}
 			}
 		} else {
@@ -502,8 +500,17 @@ int cmd_list(char* flags[], int nargs){
 int cmd_allocate (container* c) {
 	switch (c->nargs) {
 		case 1:
+			// Mostramos elementos lista
 			break;
 		case 2:
+			if(strcmp(flags[1],"-malloc")) {
+
+			} else if(strcmp(flags[1],"-nmap")){
+
+			} else if(strcmp(flags[1],"-malloc")){
+
+			}
+
 			break;
 	}
 }
@@ -613,15 +620,9 @@ int cmdManager(container* c){
 	return COMANDO_INVALIDO;
 }
 
-int procesarEntrada(char * cadena, container* c){
+int procesarEntrada(char * cadena, container *c){
 
-	char * trozos [1024];
-	int ntrozos;
-
-	if((ntrozos = trocearCadena(cadena, trozos))){
-		memcpy(&c->flags, &trozos, sizeof(trozos));
-		c->nargs = ntrozos;
-
+	if((c->nargs = trocearCadena(cadena, c->flags))){
 		return cmdManager(c);
 	}
 	return 0;
