@@ -12,13 +12,14 @@
 #include <string.h>
 #include <inttypes.h>
 #include <fcntl.h>
-//include <ftw.h>
+#include "list.h"
 
 #define COMANDO_INVALIDO -1
 #define ERROR_CREATING_FILE -2
 #define ERROR_DELETING_FILE -3
 #define ERROR_DELETING_DIR -4
 #define ERROR_LISTING -5
+
 
 #define clear() printf("\033[H\033[J")
 
@@ -491,7 +492,11 @@ int cmd_list(char *flags[], int nargs){
  * TODO -shared [cl]
  */
 int cmd_allocate (char *flags[], int nargs) {
-
+	switch (nargs) {
+		case 1:
+			break;
+		case 2:
+	}
 }
 
 /*
@@ -502,34 +507,54 @@ int cmd_allocate (char *flags[], int nargs) {
 int cmd_dealocate (char *flags[], int nargs){
 
 }
-
 /*
- *
+ *TODO rmkey cl | Elimina la región de memoria compartida de llave cl. Simplemente es una llamada a shmctl(id, IPC RMID ...)
  */
 int cmd_rmkey (char *flags[], int nargs){
 
 }
-
 /*
- *
- *
+ *TODO mem | Imprime la dirección de memoria de 3 funciones del programa, tres variables globales y tres variables locales
  */
 int cmd_mem (char *flags[], int nargs){
 
 }
-
+/*
+ * TODO memdump addr | Enseña el contenido de 25 bytes empezando por addr
+ * TODO memdump addr [cont] | Enseña el contenido cont bytes empezando por addr
+ * Imprime 25 bytes por línea, podría producir segmentation fault
+ */
 int cmd_memDump (char *flags[], int nargs){
 
 }
+/*
+ *
+ */
+int cmd_recursiveFunction (int n){
+	char automatico[1024];
+	static char estatico[1024];
 
-int cmd_recursiveFunction (char *flags[], int nargs){
-
+	printf ("parametro n:%d en %p\n",n,&n);
+	printf ("array estatico en: %p \n",estatico);
+	printf ("array automatico en: %p\n",automatico);
+	n--;
+	if (n>0)
+		cmd_recursiveFunction(n);
+	return 0;
 }
 
+/*
+ * TODO read fich addr | Lee fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
+ * TODO read fich addr cont | Lee cont bytes de fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
+ */
 int cmd_read (char *flags[], int nargs){
 
 }
 
+/*
+ * TODO write file addr cont [-o] | Escribe cont bytes de addr en file. Si file no existe se crea.
+ * TODO Si ya existe, no se sobreescribe a menos que se le pase -o
+ */
 int cmd_write (char *flags[], int nargs){
 
 }
@@ -552,15 +577,12 @@ struct{
 		{"rmkey", cmd_rmkey},
 		{"mem", cmd_mem},
 		{"memdump", cmd_memDump},
-		{"recursivefunction", cmd_recursiveFunction},
+		{"recursivefunction", NULL},
 		{"read", cmd_read},
 		{"write", cmd_write},
 		{"exit",cmd_exit},
 		{"end",cmd_exit},
 		{"fin",cmd_exit},
-
-		{NULL, NULL},
-
 		{NULL, NULL}
 };
 
@@ -568,6 +590,9 @@ int cmdManager(char *trozos[], int ntrozos){
 	int i;
 	for(i = 0; CMDS[i].CMD_NAME != NULL; i++){
 		if(!strcmp(CMDS[i].CMD_NAME,trozos[0])){
+			/*if (!strcmp(trozos[0], "recursivefunction")) {
+				return cmd_recursiveFunction((int) strtoimax(trozos[1], NULL, 10));
+			}*/
 			return  CMDS[i].CMD_FUN(trozos, ntrozos);
 		}
 	}
@@ -593,11 +618,14 @@ int procesarEntrada(char * cadena){
 int main() {
 
 	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File", "ERROR Deleting Directory","ERROR Listing"};
+	tList l;
 
 	clear();
 	char * entrada ;
 	int salir = 0;
 	entrada = malloc(1024);
+	createEmptyList(&l);
+
 	while ((salir<=0)) {
 		imprimirPrompt();
 		leerEntrada(entrada);
