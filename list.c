@@ -91,22 +91,3 @@ void updateItem (tList* l, tPosL p, tNodo nodo) {
 tNodo getItem (tPosL p, tList l) {
 	return l.Array[p];
 }
-
-int main() {
-	tList l;
-	createEmptyList(&l);
-	tNodo c ;
-
-	/*for (int i = 1; i <= 10; i++ ) {
-		c.dato = i;
-		if (insertItem(c, NIL, &l)) {
-			printf("Jorge Ponce\n");
-		}
-		printf("%d\n", getItem(i, l).dato);
-	}
-
-	printf("%d\n", first(l));
-	printf("%d\n", last(l));
-	printf("%d\n", previous(last(l), l));
-	printf("%d\n", next(last(l), l));*/
-}
