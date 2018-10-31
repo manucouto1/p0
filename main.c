@@ -498,17 +498,17 @@ int cmd_list(container *c){
 
 
 }
-void printList(tDato dato, tList l) {
+int printList(char *comando, tList l) {
 	tNodo nodo;
 	tPosL i = first(l);
 
-	while ((i != NIL) && ((tDato*)(nodo = getItem(i, l)).dato)->command != dato.command) {
+	// ver si el commando existe y devolver comando invalido?
+	while ((i != NIL) && ((tDato*)(nodo = getItem(i, l)).dato)->command != comando) {
 		tDato *datoAux = (tDato*)nodo.dato;
-		// Esto es un ejemplo de uso de los nuevos tipos de datos
-		// yo pondria el codigo para que solo haya que pasar por el if una vez, auque haya que repetir algo de codigo
-		printf("%p: size:%s %d %s", datoAux->pointer, datoAux->command, datoAux->data_size, datoAux->date);
+		printf("%p: size:%d %s %s", datoAux->pointer, datoAux->data_size, datoAux->command, datoAux->date);
 		i = next(i,l);
 	}
+	return 0;
 }
 /*
  * TODO Allocate | reserva memoria y la guarda en la lista, si no se le pasan argumentos muestra los elementos de la lista
@@ -523,16 +523,7 @@ int cmd_allocate (container *c) {
 		case 1:
 			return COMANDO_INVALIDO;
 		case 2:
-			if(!strcmp(c->flags[1],"-malloc")) {
-				// Muestra los elementos de la lista creados con malloc
-
-
-			} else if(!strcmp(c->flags[1],"-nmap")){
-				// Muestra los elementos de la lista Creados con -nmap
-			} else if(!strcmp(c->flags[1],"-malloc")){
-
-			}
-
+			printList(c->flags[1], c->lista);
 			break;
 		case 3:
 			if(!strcmp(c->flags[1],"-malloc")) {
@@ -580,15 +571,7 @@ int cmd_deallocate (container *c){
 			// No hace nada
 			return COMANDO_INVALIDO;
 		case 2:
-			if (!strcmp(c->flags[1], "-malloc")) {
-				dato.command = "-malloc";
-			} else if (!strcmp(c->flags[1], "-mmap")) {
-				dato.command = "-malloc";
-			} else {
-				dato.command = "shared memory";
-			}
-			printList(dato, c->lista);
-			break;
+			return printList(c->flags[1], c->lista);
 		case 3:
 			// en el id guardamos la direccion de memoria
 			// hay que ver si va bien porque nosotros estamos comparando un string con una direccion de memoria
@@ -598,6 +581,8 @@ int cmd_deallocate (container *c){
 				nodo.id = c->flags[2];
 			}
 			break;
+		default:
+			return COMANDO_INVALIDO;
 	}
 }
 /*
