@@ -19,6 +19,7 @@
 #define ERROR_DELETING_FILE -3
 #define ERROR_DELETING_DIR -4
 #define ERROR_LISTING -5
+#define ERROR_INSERT -6
 
 
 #define clear() printf("\033[H\033[J")
@@ -102,7 +103,7 @@ char * ConvierteModo2 (mode_t m)
 }
 
 
-int cmd_autores(container* c){
+int cmd_autores(container *c){
 	int i = 1;
 
 	char *autores[2] = {"Manuel Couto Pintos","Victor Escudero Gonzalez"};
@@ -156,7 +157,7 @@ void time_util(char * fecha[]){
 	trocearCadena(asctime(t), fecha);
 }
 
-int cmd_hora (container* c){
+int cmd_hora (container *c){
 	char * fecha[100];
 	time_util(fecha);
 	switch (c->nargs) {
@@ -180,7 +181,7 @@ int cmd_fecha (container *c) {
 	}
 }
 
-int cmd_chdir(container* c){
+int cmd_chdir(container *c){
 	char dir[1024];
 
 	switch (c->nargs) {
@@ -204,7 +205,7 @@ int cmd_exit(container *c) {
 	return 1;
 }
 
-int cmd_create(container* c) {
+int cmd_create(container *c) {
 	int fd;
 
 	switch (c->nargs) {
@@ -384,7 +385,7 @@ void print_element(struct element_description elements_description, int argN){
 	}
 }
 
-int cmd_query(container* c) {
+int cmd_query(container *c) {
 	/*
 	 * DONE - Devuelve informacion de los archivos/directorios pasados como argumentos
 	 * DONE - Produce una linea por arch/dir pasado como argumento
@@ -516,7 +517,7 @@ void printList(tDato dato, tList l) {
  * TODO -createshared [cl] [tam]
  * TODO -shared [cl]
  */
-int cmd_allocate (container* c) {
+int cmd_allocate (container *c) {
 
 	switch (c->nargs) {
 		case 1:
@@ -543,7 +544,6 @@ int cmd_allocate (container* c) {
 						tDato *dato= malloc(sizeof(tDato));
 						tNodo *nodo= malloc(sizeof(tNodo));
 
-						tNodo nodoAux;
 						(*dato).command = "malloc";
 						(*dato).data_size = allocSize;
 						(*dato).date = fecha[3];
@@ -552,24 +552,11 @@ int cmd_allocate (container* c) {
 						(*nodo).dato = dato;
 						(*nodo).id = (*dato).pointer;
 
-						printf("> %p ", &(*dato).pointer);
-
-						insertItem(*nodo,next(last(c->lista),c->lista),&(c->lista));
-
-						nodoAux.id=(*dato).pointer;
-
-						tPosL posL = findItem(nodoAux,c->lista);
-
-						nodoAux = getItem(posL, c->lista);
-
-						tDato *datoAux;
-						datoAux = (tDato *) nodoAux.dato;
-
-						printf("> %s ", (*datoAux).command);
-
-
-
-
+						if(insertItem(*nodo,next(last(c->lista),c->lista),&(c->lista))){
+							return 0;
+						} else {
+							return ERROR_INSERT;
+						}
 					}
 				}
 			}
@@ -584,7 +571,7 @@ int cmd_allocate (container* c) {
  * TODO -malloc [tam] | Se elimina uno de los bloques de tamaño [tam] de la lista, si no hay o no se pasa argumento lista
  * TODO -mmap fich | deshace un mapeo del fichero <-> memoria y borra de lista,
  */
-int cmd_deallocate (container* c){
+int cmd_deallocate (container *c){
 	tNodo nodo;
 	tDato dato;
 
@@ -616,13 +603,13 @@ int cmd_deallocate (container* c){
 /*
  *TODO rmkey cl | Elimina la región de memoria compartida de llave cl. Simplemente es una llamada a shmctl(id, IPC RMID ...)
  */
-int cmd_rmkey (container* c){
+int cmd_rmkey (container *c){
 
 }
 /*
  *TODO mem | Imprime la dirección de memoria de 3 funciones del programa, tres variables globales y tres variables locales
  */
-int cmd_mem (container* c){
+int cmd_mem (container *c){
 
 }
 /*
@@ -630,7 +617,7 @@ int cmd_mem (container* c){
  * TODO memdump addr [cont] | Enseña el contenido cont bytes empezando por addr
  * Imprime 25 bytes por línea, podría producir segmentation fault
  */
-int cmd_memDump (char *flags[], int nargs){
+int cmd_memDump (container *c){
 
 }
 /*
@@ -648,7 +635,7 @@ void auxRecursive (int n) {
 	if (n>0) auxRecursive(n);
 };
 
-int cmd_recursiveFunction (container* c){
+int cmd_recursiveFunction (container *c){
 
 	if (c->nargs == 2) {
 		auxRecursive((int) strtoimax(c->flags[1], NULL, 10));
@@ -662,7 +649,7 @@ int cmd_recursiveFunction (container* c){
  * TODO read fich addr | Lee fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
  * TODO read fich addr cont | Lee cont bytes de fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
  */
-int cmd_read (container* c){
+int cmd_read (container *c){
 
 }
 
@@ -670,12 +657,12 @@ int cmd_read (container* c){
  * TODO write file addr cont [-o] | Escribe cont bytes de addr en file. Si file no existe se crea.
  * TODO Si ya existe, no se sobreescribe a menos que se le pase -o
  */
-int cmd_write (container* c){
+int cmd_write (container *c){
 
 }
 
 struct{
-	char * CMD_NAME;
+	char *CMD_NAME;
 	int (*CMD_FUN)(container* c);
 } CMDS[] = {
 		{"autores",cmd_autores},
@@ -726,7 +713,7 @@ int procesarEntrada(char * cadena, container *c){
  */
 int main() {
 
-	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File", "ERROR Deleting Directory","ERROR Listing"};
+	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File", "ERROR Deleting Directory","ERROR Listing","ERROR Inserting"};
 	tList l;
 
 	clear();

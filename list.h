@@ -1,5 +1,5 @@
 #define MAX 6400
-
+#define NIL 0
 typedef int tPosL;
 
 typedef struct {

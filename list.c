@@ -1,7 +1,7 @@
 #include "list.h"
 #include <stdio.h>
 
-#define NIL 0
+
 
 void createEmptyList(tList* l) {
 	l->fin = NIL;
