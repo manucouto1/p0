@@ -62,15 +62,8 @@ tPosL findItem (tNodo nodo, tList l) {
 		p = next(p, l);
 	}
 
-	if (p < l.fin) {
+	if (nodo.id == l.Array[p].id) {
 		return p;
-	}
-	else {
-		if (p == l.fin) {
-			if (nodo.id == l.Array[p].id) {
-				return p;
-			}
-		}
 	}
 	return NIL;
 }

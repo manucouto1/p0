@@ -497,6 +497,18 @@ int cmd_list(container *c){
 
 
 }
+void printList(tDato dato, tList l) {
+	tNodo nodo;
+	tPosL i = first(l);
+
+	while ((i != NIL) && ((tDato*)(nodo = getItem(i, l)).dato)->command != dato.command) {
+		tDato *datoAux = (tDato*)nodo.dato;
+		// Esto es un ejemplo de uso de los nuevos tipos de datos
+		// yo pondria el codigo para que solo haya que pasar por el if una vez, auque haya que repetir algo de codigo
+		printf("%p: size:%s %d %s", datoAux->pointer, datoAux->command, datoAux->data_size, datoAux->date);
+		i = next(i,l);
+	}
+}
 /*
  * TODO Allocate | reserva memoria y la guarda en la lista, si no se le pasan argumentos muestra los elementos de la lista
  * TODO -malloc [tam] | se le indica el tamaño devuelve la direccion de memoria, sin argumentos lista elementos
@@ -572,8 +584,34 @@ int cmd_allocate (container* c) {
  * TODO -malloc [tam] | Se elimina uno de los bloques de tamaño [tam] de la lista, si no hay o no se pasa argumento lista
  * TODO -mmap fich | deshace un mapeo del fichero <-> memoria y borra de lista,
  */
-int cmd_dealocate (container* c){
+int cmd_deallocate (container* c){
+	tNodo nodo;
+	tDato dato;
 
+	switch (c->nargs) {
+		case 1:
+			// No hace nada
+			return COMANDO_INVALIDO;
+		case 2:
+			if (!strcmp(c->flags[1], "-malloc")) {
+				dato.command = "-malloc";
+			} else if (!strcmp(c->flags[1], "-mmap")) {
+				dato.command = "-malloc";
+			} else {
+				dato.command = "shared memory";
+			}
+			printList(dato, c->lista);
+			break;
+		case 3:
+			// en el id guardamos la direccion de memoria
+			// hay que ver si va bien porque nosotros estamos comparando un string con una direccion de memoria
+			// puede que haya que convertir el puntero a string o el string a puntero para que vaya bien
+
+			if (!strcmp(c->flags[1], "-malloc")) {
+				nodo.id = c->flags[2];
+			}
+			break;
+	}
 }
 /*
  *TODO rmkey cl | Elimina la región de memoria compartida de llave cl. Simplemente es una llamada a shmctl(id, IPC RMID ...)
@@ -650,7 +688,7 @@ struct{
 		{"query", cmd_query},
 		{"list", cmd_list},
 		{"allocate", cmd_allocate},
-		{"deallocate", cmd_dealocate},
+		{"deallocate", cmd_deallocate},
 		{"rmkey", cmd_rmkey},
 		{"mem", cmd_mem},
 		{"memdump", cmd_memDump},
