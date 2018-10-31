@@ -33,7 +33,7 @@ tPosL next(tPosL p, tList l) {
 	else return NIL;
 }
 
-int insertItem (tNodo item, tPosL pos, tList* l) {
+int insertItem (tNodo nodo, tPosL pos, tList* l) {
 	tPosL i;
 
 	if (l->fin == MAX) {
@@ -42,23 +42,23 @@ int insertItem (tNodo item, tPosL pos, tList* l) {
 	else {
 		l->fin = l->fin + 1;
 		if (pos == NIL) {
-			l->Array[l->fin] = item;
+			l->Array[l->fin] = nodo;
 		}
 		else {
 			for (i = l->fin; i >= pos + 1; i--) {
 				l->Array[i] = l->Array[i - 1];
 			}
-			l->Array[pos] = item;
+			l->Array[pos] = nodo;
 		}
 		return 1;
 	}
 }
 
-tPosL findItem (tType dato, tList l) {
+tPosL findItem (tNodo nodo, tList l) {
 	tPosL p;
 
 	p = first(l);
-	while ((p < l.fin) && (l.Array[p].type != dato)) {
+	while ((p < l.fin) && (l.Array[p].id != nodo.id)) {
 		p = next(p, l);
 	}
 
@@ -67,7 +67,7 @@ tPosL findItem (tType dato, tList l) {
 	}
 	else {
 		if (p == l.fin) {
-			if (dato == l.Array[p].type) {
+			if (nodo.id == l.Array[p].id) {
 				return p;
 			}
 		}
@@ -84,7 +84,7 @@ void deleteAtPosition (tPosL p, tList* l) {
 	l->fin = l->fin - 1;
 }
 
-void updateItem (tList* l, tPosL p, tNodo nodo) {
+void updateItem (tList* l, tPosL p,tNodo nodo) {
 	l->Array[p] = nodo;
 }
 

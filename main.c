@@ -29,6 +29,13 @@ typedef struct {
 	char *flags[1024];
 }container;
 
+typedef struct {
+	void *pointer;
+	int data_size;
+	char *command;
+	char *date;
+}tDato;
+
 struct element_description{
 	uintmax_t nInodo;
 	char permisos[12];
@@ -294,15 +301,15 @@ int cmd_delete(container *c) {
 				printf("cannot delete %s: %s\n",c->flags[1], strerror(errno));
 			}
 		case 3:
-			if (strcmp(c->flags[1], "-r")) {
-				return COMANDO_INVALIDO;
-			} else {
+			if (!strcmp(c->flags[1], "-r")) {
 				if (!stat(c->flags[2], &path_stat)) {
 					borrar_rec(c->flags[2], path_stat);
 				}
 				else {
 					printf("cannot delete %s: %s\n",c->flags[2], strerror(errno));
 				}
+			} else {
+				return COMANDO_INVALIDO;
 			}
 			return 0;
 		default:
@@ -498,20 +505,65 @@ int cmd_list(container *c){
  * TODO -shared [cl]
  */
 int cmd_allocate (container* c) {
+
 	switch (c->nargs) {
 		case 1:
-			// Mostramos elementos lista
-			break;
+			return COMANDO_INVALIDO;
 		case 2:
-			if(strcmp(flags[1],"-malloc")) {
+			if(!strcmp(c->flags[1],"-malloc")) {
+				// Muestra los elementos de la lista creados con malloc
 
-			} else if(strcmp(flags[1],"-nmap")){
 
-			} else if(strcmp(flags[1],"-malloc")){
+			} else if(!strcmp(c->flags[1],"-nmap")){
+				// Muestra los elementos de la lista Creados con -nmap
+			} else if(!strcmp(c->flags[1],"-malloc")){
 
 			}
 
 			break;
+		case 3:
+			if(!strcmp(c->flags[1],"-malloc")) {
+				if(c->flags[2]!= NULL){
+					int allocSize = atoi(c->flags[2]);
+					if(allocSize > 0){
+						char *fecha[100];
+						time_util(fecha);
+						tDato *dato= malloc(sizeof(tDato));
+						tNodo *nodo= malloc(sizeof(tNodo));
+
+						tNodo nodoAux;
+						(*dato).command = "malloc";
+						(*dato).data_size = allocSize;
+						(*dato).date = fecha[3];
+						(*dato).pointer = malloc(allocSize);
+
+						(*nodo).dato = dato;
+						(*nodo).id = (*dato).pointer;
+
+						printf("> %p ", &(*dato).pointer);
+
+						insertItem(*nodo,next(last(c->lista),c->lista),&(c->lista));
+
+						nodoAux.id=(*dato).pointer;
+
+						tPosL posL = findItem(nodoAux,c->lista);
+
+						nodoAux = getItem(posL, c->lista);
+
+						tDato *datoAux;
+						datoAux = (tDato *) nodoAux.dato;
+
+						printf("> %s ", (*datoAux).command);
+
+
+
+
+					}
+				}
+			}
+			return 0;
+		default:
+			return COMANDO_INVALIDO;
 	}
 }
 
@@ -557,6 +609,7 @@ void auxRecursive (int n) {
 
 	if (n>0) auxRecursive(n);
 };
+
 int cmd_recursiveFunction (container* c){
 
 	if (c->nargs == 2) {
