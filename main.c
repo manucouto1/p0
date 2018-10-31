@@ -13,6 +13,10 @@
 #include <inttypes.h>
 #include <fcntl.h>
 #include "list.h"
+#include <sys/mman.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+
 
 #define COMANDO_INVALIDO -1
 #define ERROR_CREATING_FILE -2
@@ -537,6 +541,11 @@ int cmd_allocate (container* c) {
  * TODO -mmap fich | deshace un mapeo del fichero <-> memoria y borra de lista,
  */
 int cmd_deallocate (container* c){
+	tPosL pos;
+	tNodo nodo;
+	int i, id;
+	void* p;
+
 	switch (c->nargs) {
 		case 1:
 			printList(NULL, c->lista);
@@ -548,14 +557,85 @@ int cmd_deallocate (container* c){
 			else if (!strcmp(c->flags[1], "-mmap")) {
 				printList("mmap", c->lista);
 			}
-			else printList("shared memory", c->lista);
+			else if (!strcmp(c->flags[1], "-shared")) {
+					printList("shared memory", c->lista);
+			}
+			else {
+				i = first(c->lista);
+				while ((i != NIL) && ((nodo = getItem(i, c->lista)).addr != (void* ) c->flags[1])) {
+					i = next(i, c->lista);
+				}
+				if (i != NIL) {
+					printf("block at address %p deallocated (%s)", nodo.addr, nodo.type);
+					if (!strcmp(nodo.type, "malloc")) {
+						free(nodo.addr);
+						deleteAtPosition(i, &c->lista);
+					}
+					else if (!strcmp(nodo.type, "mmap")) {
+						fsync(nodo.fd);
+						if (!close(nodo.fd)) {
+							munmap(nodo.addr, nodo.size);
+							deleteAtPosition(i, &c->lista);
+						}
+						else printf("cannot unmap %s: %s", nodo.fich, strerror(errno));
+					}
+					else {
+						id = shmget(nodo.key, nodo.size, 0);
+						p = shmat(id, nodo.addr, 0);
+						shmdt(p);
+						deleteAtPosition(i, &c->lista);
+					}
+				}
+				else printList(NULL, c->lista);
+			}
 			break;
 		case 3:
 			if (!strcmp(c->flags[1], "-malloc")) {
-
+				pos = findItem("malloc",(unsigned long) strtol(c->flags[2], NULL, 10), c->lista);
+				nodo = getItem(pos, c->lista);
+				if (pos != NIL) {
+					printf("block at address %p deallocated (%s)", nodo.addr, nodo.type);
+					free(nodo.addr);
+					deleteAtPosition(pos, &c->lista);
+				}
+				else printList("malloc", c->lista);
 			}
+			else if (!strcmp(c->flags[1], "-mmap")){
+				i = first(c->lista);
+				while ((i != NIL) && ((nodo = getItem(i,c->lista)).fich != c->flags[2])) {
+					i = next(i, c->lista);
+				}
+				if (i != NIL) {
+					fsync(nodo.fd);
+					if (!close(nodo.fd)) {
+						printf("block at address %p deallocated (%s)", nodo.addr, nodo.type);
+						munmap(nodo.addr, nodo.size);
+						deleteAtPosition(i, &c->lista);
+					}
+					else printf("cannot unmap %s: %s", nodo.fich, strerror(errno));
+				}
+				else printList("mmap", c->lista);
+			}
+			else if (!strcmp(c->flags[1], "-shared")) {
+				i = first(c->lista);
+				while ((i != NIL) && ((nodo = getItem(i,c->lista)).key != (int) strtoimax(c->flags[2], NULL, 10))) {
+					i = next(i, c->lista);
+				}
+				if (i != NIL) {
+					id = shmget(nodo.key, nodo.size, 0);
+					p = shmat(id, nodo.addr, 0);
+					shmdt(p);
+					printf("block at address %p deallocated (%s)", nodo.addr, nodo.type);
+					deleteAtPosition(i, &c->lista);
+				}
+			}
+			else return COMANDO_INVALIDO;
 			break;
+		default:
+			return COMANDO_INVALIDO;
 	}
+
+	return 0;
 }
 /*
  *TODO rmkey cl | Elimina la región de memoria compartida de llave cl. Simplemente es una llamada a shmctl(id, IPC RMID ...)

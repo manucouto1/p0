@@ -56,14 +56,12 @@ tPosL findItem (tType dato, tSize tam, tList l) {
 	tPosL p;
 
 	p = first(l);
+
 	while ((p != NIL) && (l.Array[p].type != dato) && (l.Array[p].size != tam)) {
 		p = next(p, l);
 	}
 
-	if (p <= l.fin) {
-		return p;
-	}
-	return NIL;
+	return p;
 }
 
 void deleteAtPosition (tPosL p, tList* l) {
