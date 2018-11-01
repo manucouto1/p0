@@ -23,6 +23,7 @@
 #define ERROR_DELETING_FILE -3
 #define ERROR_DELETING_DIR -4
 #define ERROR_LISTING -5
+#define ERROR_INSERT -6
 
 
 #define clear() printf("\033[H\033[J")
@@ -43,6 +44,12 @@ struct element_description{
 	long size;
 	char fecha[200];
 };
+
+typedef struct {
+	int* key;
+	size_t* tam;
+	char* file;
+} auxDealloc;
 
 int trocearCadena ( char * cadena, char * trozos[]){
 	int  i = 1;
@@ -499,17 +506,28 @@ void printList(tType type, tList l) {
 	tNodo nodo;
 	tPosL i = first(l);
 
-	while ((i != NIL) && (((nodo = getItem(i, l)).type != type) || (type == NULL))) {
-		if (!strcmp(type,"mmap")) {
-			printf("%p: size:%lu %s %s (fd: %d) %s", nodo.addr, nodo.size, nodo.type, nodo.fich, nodo.fd, nodo.time);
+	if (!isEmptyList(l)) {
+		while ((i != NIL) && (((nodo = getItem(i, l)).tipo == type) || (type == -1))) {
+			switch (nodo.tipo) {
+				case mallocc:
+					printf("%p: size:%lu malloc %s", nodo.addr, nodo.size, nodo.fecha);
+					break;
+				case mmapp:
+					printf("%p: size:%lu mmap %s (fd: %d) %s", nodo.addr, nodo.size, ((mmap_info *) nodo.extra)->fich,
+						   ((mmap_info *) nodo.extra)->fd, nodo.fecha);
+					break;
+				case shared:
+					printf("%p: size:%lu shared memory (key: %d) %s", nodo.addr, nodo.size,
+						   ((shared_info *) nodo.extra)->key, nodo.fecha);
+					break;
+				default:
+					break;
+			}
+			i = next(i, l);
 		}
-		else if (!strcmp(type, "shared memory")) {
-			printf("%p: size:%lu %s (key: %d) %s", nodo.addr, nodo.size, nodo.type, nodo.key, nodo.time);
-		}
-		else printf("%p: size:%lu %s %s", nodo.addr, nodo.size, nodo.type, nodo.time);
-		i = next(i,l);
 	}
 }
+
 /*
  * TODO Allocate | reserva memoria y la guarda en la lista, si no se le pasan argumentos muestra los elementos de la lista
  * TODO -malloc [tam] | se le indica el tamaño devuelve la direccion de memoria, sin argumentos lista elementos
@@ -517,124 +535,159 @@ void printList(tType type, tList l) {
  * TODO -createshared [cl] [tam]
  * TODO -shared [cl]
  */
-int cmd_allocate (container* c) {
-	switch (c->nargs) {
-		case 1:
-			// Mostramos elementos lista
-			break;
-		case 2:
-			if(strcmp(c->flags[1],"-malloc")) {
-
-			} else if(strcmp(c->flags[1],"-nmap")){
-
-			} else if(strcmp(c->flags[1],"-malloc")){
-
-			}
-
-			break;
-	}
-}
-
-/*
- * TODO Delocate | lobera una de las direcciones de memorias reservadas en la lista, sin argumentos lista las direcciones
- * TODO -malloc [tam] | Se elimina uno de los bloques de tamaño [tam] de la lista, si no hay o no se pasa argumento lista
- * TODO -mmap fich | deshace un mapeo del fichero <-> memoria y borra de lista,
- */
-int cmd_deallocate (container* c){
-	tPosL pos;
-	tNodo nodo;
-	int i, id;
-	void* p;
+int cmd_allocate (container *c) {
 
 	switch (c->nargs) {
 		case 1:
-			printList(NULL, c->lista);
-			break;
+			return COMANDO_INVALIDO;
 		case 2:
-			if (!strcmp(c->flags[1], "-malloc")) {
-				printList("malloc", c->lista);
-			}
-			else if (!strcmp(c->flags[1], "-mmap")) {
-				printList("mmap", c->lista);
-			}
-			else if (!strcmp(c->flags[1], "-shared")) {
-					printList("shared memory", c->lista);
-			}
-			else {
-				i = first(c->lista);
-				while ((i != NIL) && ((nodo = getItem(i, c->lista)).addr != (void* ) c->flags[1])) {
-					i = next(i, c->lista);
-				}
-				if (i != NIL) {
-					printf("block at address %p deallocated (%s)", nodo.addr, nodo.type);
-					if (!strcmp(nodo.type, "malloc")) {
-						free(nodo.addr);
-						deleteAtPosition(i, &c->lista);
-					}
-					else if (!strcmp(nodo.type, "mmap")) {
-						fsync(nodo.fd);
-						if (!close(nodo.fd)) {
-							munmap(nodo.addr, nodo.size);
-							deleteAtPosition(i, &c->lista);
-						}
-						else printf("cannot unmap %s: %s", nodo.fich, strerror(errno));
-					}
-					else {
-						id = shmget(nodo.key, nodo.size, 0);
-						p = shmat(id, nodo.addr, 0);
-						shmdt(p);
-						deleteAtPosition(i, &c->lista);
-					}
-				}
-				else printList(NULL, c->lista);
-			}
+			printList(-1, c->lista);
 			break;
 		case 3:
-			if (!strcmp(c->flags[1], "-malloc")) {
-				pos = findItem("malloc",(unsigned long) strtol(c->flags[2], NULL, 10), c->lista);
-				nodo = getItem(pos, c->lista);
-				if (pos != NIL) {
-					printf("block at address %p deallocated (%s)", nodo.addr, nodo.type);
-					free(nodo.addr);
-					deleteAtPosition(pos, &c->lista);
-				}
-				else printList("malloc", c->lista);
-			}
-			else if (!strcmp(c->flags[1], "-mmap")){
-				i = first(c->lista);
-				while ((i != NIL) && ((nodo = getItem(i,c->lista)).fich != c->flags[2])) {
-					i = next(i, c->lista);
-				}
-				if (i != NIL) {
-					fsync(nodo.fd);
-					if (!close(nodo.fd)) {
-						printf("block at address %p deallocated (%s)", nodo.addr, nodo.type);
-						munmap(nodo.addr, nodo.size);
-						deleteAtPosition(i, &c->lista);
+			if(!strcmp(c->flags[1],"-malloc")) {
+				if(c->flags[2]!= NULL){
+					size_t allocSize =(unsigned long) strtol(c->flags[2], NULL, 10);
+					if(allocSize > 0){
+						char *fecha[100];
+						time_util(fecha);
+						tNodo nodo;
+						nodo.tipo = mallocc;
+						nodo.size = allocSize;
+						nodo.fecha = fecha[3];
+						nodo.addr = malloc(allocSize);
+						nodo.extra = NULL;
+						if(!insertItem(nodo,NIL,&c->lista)) return ERROR_INSERT;
+
 					}
-					else printf("cannot unmap %s: %s", nodo.fich, strerror(errno));
-				}
-				else printList("mmap", c->lista);
-			}
-			else if (!strcmp(c->flags[1], "-shared")) {
-				i = first(c->lista);
-				while ((i != NIL) && ((nodo = getItem(i,c->lista)).key != (int) strtoimax(c->flags[2], NULL, 10))) {
-					i = next(i, c->lista);
-				}
-				if (i != NIL) {
-					id = shmget(nodo.key, nodo.size, 0);
-					p = shmat(id, nodo.addr, 0);
-					shmdt(p);
-					printf("block at address %p deallocated (%s)", nodo.addr, nodo.type);
-					deleteAtPosition(i, &c->lista);
 				}
 			}
-			else return COMANDO_INVALIDO;
 			break;
 		default:
 			return COMANDO_INVALIDO;
 	}
 
+	return 0;
+}
+
+int compare(tNodo nodo, void* p, int num) {
+	switch (num) {
+		case 0: return (nodo.tipo == mallocc) && (nodo.size == *((size_t*) p));
+		case 1: return (nodo.tipo == mmapp) && !strcmp(((mmap_info*) nodo.extra)->fich, (char*) p);
+		case 2: return (nodo.tipo == shared) && ((shared_info*) nodo.extra)->key == *((int*) p);
+		default: return 0;
+	}
+}
+
+void deallocateAux (tList* l, tNodo nodo, tPosL pos, int num) {
+	int id;
+	void* p;
+
+	switch (num) {
+		case 0:
+			printf("block at address %p deallocated (malloc)", nodo.addr);
+			deleteAtPosition(pos, l);
+			free(nodo.addr);
+			break;
+		case 1:
+			fsync(((mmap_info*)nodo.extra)->fd);
+			if (!close(((mmap_info*)nodo.extra)->fd)) {
+				printf("block at address %p deallocated (mmap)", nodo.addr);
+				munmap(nodo.addr, nodo.size);
+				deleteAtPosition(pos, l);
+			}
+			else printf("cannot unmap %s: %s",((mmap_info* )nodo.extra)->fich, strerror(errno));
+			break;
+		case 2:
+			printf("block at address %p deallocated (shared)", nodo.addr);
+			id = shmget(((shared_info* )nodo.extra)->key, nodo.size, 0);
+			p = shmat(id, nodo.addr, 0);
+			shmdt(p);
+			deleteAtPosition(pos, l);
+			break;
+		default:
+			break;
+	}
+}
+
+void searchDealloc (tType type, auxDealloc aux, tList* l) {
+	int i, b = 0;
+	i = first(*l);
+	tNodo nodo;
+
+	if (!isEmptyList(*l)) {
+		while ((i != NIL) && !b) {
+			nodo = getItem(i, *l);
+			if (compare(nodo, aux.tam, type)) b = 1;
+			else i = next(i, *l);
+		}
+		if (b) {
+			deallocateAux(l, nodo, i, 0);
+		} else printList(type, *l);
+	}
+	else printList(type, *l);
+}
+/*
+ * TODO Deallocate | lobera una de las direcciones de memorias reservadas en la lista, sin argumentos lista las direcciones
+ * TODO -malloc [tam] | Se elimina uno de los bloques de tamaño [tam] de la lista, si no hay o no se pasa argumento lista
+ * TODO -mmap fich | deshace un mapeo del fichero <-> memoria y borra de lista,
+ */
+int cmd_deallocate (container* c){
+	tNodo nodo;
+	tPosL i;
+	int b = 0;
+	auxDealloc aux;
+
+	aux.key = malloc(sizeof(int));
+	aux.tam = malloc(sizeof(unsigned long));
+	aux.file = malloc(sizeof(char)*200);
+
+	switch (c->nargs) {
+		case 1:
+			printList(-1, c->lista);
+			break;
+		case 2:
+			if (!strcmp(c->flags[1], "-malloc")) printList(mallocc, c->lista);
+			else if (!strcmp(c->flags[1], "-mmap")) printList(mmapp, c->lista);
+			else if (!strcmp(c->flags[1], "-shared")) printList(shared, c->lista);
+			else {
+				i = findItem((void* ) c->flags[1], c->lista);
+				if (i != NIL) {
+					nodo = getItem(i, c->lista);
+					deallocateAux(&c->lista, nodo, i, nodo.tipo);
+				}
+				else printList(-1, c->lista);
+			}
+			break;
+		case 3:
+			if (!strcmp(c->flags[1], "-malloc")) {
+				*aux.tam = (unsigned long) strtol(c->flags[2], NULL, 10);
+				searchDealloc(mallocc, aux, &c->lista);
+			}
+			else if (!strcmp(c->flags[1], "-mmap")){
+				strcpy(aux.file, c->flags[2]);
+				searchDealloc(mmapp, aux, &c->lista);
+			}
+			else if (!strcmp(c->flags[1], "-shared")) {
+				*aux.key = (int) strtoimax(c->flags[2], NULL, 10);
+				searchDealloc(shared, aux, &c->lista);
+			}
+			else {
+				free(aux.key);
+				free(aux.file);
+				free(aux.tam);
+				return COMANDO_INVALIDO;
+			}
+			break;
+		default:
+			free(aux.key);
+			free(aux.file);
+			free(aux.tam);
+			return COMANDO_INVALIDO;
+	}
+
+	free(aux.key);
+	free(aux.file);
+	free(aux.tam);
 	return 0;
 }
 /*
@@ -654,7 +707,7 @@ int cmd_mem (container* c){
  * TODO memdump addr [cont] | Enseña el contenido cont bytes empezando por addr
  * Imprime 25 bytes por línea, podría producir segmentation fault
  */
-int cmd_memDump (char *flags[], int nargs){
+int cmd_memDump (container* c){
 
 }
 /*
@@ -749,7 +802,7 @@ int procesarEntrada(char * cadena, container *c){
  */
 int main() {
 
-	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File", "ERROR Deleting Directory","ERROR Listing"};
+	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File", "ERROR Deleting Directory","ERROR Listing", "ERROR Inserting"};
 	tList l;
 
 	clear();

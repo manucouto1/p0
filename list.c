@@ -1,5 +1,6 @@
 #include "list.h"
 #include <stdio.h>
+#include <memory.h>
 
 void createEmptyList(tList* l) {
 	l->fin = NIL;
@@ -52,12 +53,12 @@ int insertItem (tNodo item, tPosL pos, tList* l) {
 	}
 }
 
-tPosL findItem (tType dato, tSize tam, tList l) {
+tPosL findItem (tAddr addr, tList l) {
 	tPosL p;
 
 	p = first(l);
 
-	while ((p != NIL) && (l.Array[p].type != dato) && (l.Array[p].size != tam)) {
+	while ((p != NIL) && (memcmp(l.Array[p].addr,addr,NULL))) {
 		p = next(p, l);
 	}
 
