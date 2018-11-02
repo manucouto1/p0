@@ -46,8 +46,8 @@ struct element_description{
 };
 
 typedef struct {
-	int* key;
-	size_t* tam;
+	int key;
+	size_t tam;
 	char* file;
 } auxDealloc;
 
@@ -507,27 +507,96 @@ void printList(tType type, tList l) {
 	tPosL i = first(l);
 
 	if (!isEmptyList(l)) {
-		while ((i != NIL) && (((nodo = getItem(i, l)).tipo == type) || (type == -1))) {
-			switch (nodo.tipo) {
-				case mallocc:
-					printf("%p: size:%lu malloc %s", nodo.addr, nodo.size, nodo.fecha);
-					break;
-				case mmapp:
-					printf("%p: size:%lu mmap %s (fd: %d) %s", nodo.addr, nodo.size, ((mmap_info *) nodo.extra)->fich,
-						   ((mmap_info *) nodo.extra)->fd, nodo.fecha);
-					break;
-				case shared:
-					printf("%p: size:%lu shared memory (key: %d) %s", nodo.addr, nodo.size,
-						   ((shared_info *) nodo.extra)->key, nodo.fecha);
-					break;
-				default:
-					break;
+		while (i != NIL) {
+			if (((nodo = getItem(i, l)).tipo == type) || (type == -1)) {
+				switch (nodo.tipo) {
+					case mallocc:
+						printf("%p: size:%lu malloc %s", nodo.addr, nodo.size, asctime(&nodo.fecha));
+						break;
+					case mmapp:
+						printf("%p: size:%lu mmap %s (fd: %d) %s", nodo.addr, nodo.size,
+							   ((mmap_info *) nodo.extra)->fich,
+							   ((mmap_info *) nodo.extra)->fd, asctime(&nodo.fecha));
+						break;
+					case shared:
+						printf("%p: size:%lu shared memory (key: %d) %s", nodo.addr, nodo.size,
+							   ((shared_info *) nodo.extra)->key, asctime(&nodo.fecha));
+						break;
+					default:
+						break;
+				}
 			}
 			i = next(i, l);
 		}
 	}
 }
 
+void* MmapFichero (char *fichero, int protection, tNodo* nodo) {
+	int df, map = MAP_PRIVATE, modo = O_RDONLY;
+	struct stat s;
+	void *p;
+	nodo->extra = malloc(1024);
+	((mmap_info*)nodo->extra)->fich = malloc(sizeof(char)* 200);
+
+	if (protection&PROT_WRITE) modo = O_RDWR;
+
+	if (stat(fichero, &s) == -1 || (df = open (fichero, modo)) == -1)
+		return NULL;
+
+	if ((p = mmap(NULL,(size_t) s.st_size, protection, map, df, 0)) == MAP_FAILED)
+		return NULL;
+
+	nodo->size =(size_t) s.st_size;
+	strcpy(((mmap_info*)nodo->extra)->fich,fichero);
+	((mmap_info*)nodo->extra)->fd = df;
+
+	return p;
+}
+
+int cmd_mmap (char* arg[], tNodo* nodo) {
+	char* perm;
+	int protection = 0;
+
+	if ((perm = arg[3]) != NULL && strlen(perm) < 4) {
+		if (strchr(perm, 'r') != NULL) protection|=PROT_READ;
+		if (strchr(perm, 'w') != NULL) protection|=PROT_READ;
+		if (strchr(perm, 'x') != NULL) protection|=PROT_READ;
+	}
+
+	if ((nodo->addr = MmapFichero(arg[2], protection, nodo)) == NULL) {
+		perror("cannot mmap file\n");
+		return 0;
+	}
+	else printf("block at address %p allocated (mmap)\n", nodo->addr);
+	return 1;
+}
+
+int createNodo (char* flags[], tNodo* nodo, tType type) {
+	time_t t;
+	time(&t);
+	nodo->tipo = type;
+	nodo->fecha = *localtime(&t);
+
+	switch (type) {
+		case mallocc:
+			nodo->extra = NULL;
+			nodo->size = strtoul(flags[2], NULL, 10);
+			nodo->addr = malloc(nodo->size);
+			if (nodo->addr == NULL){
+				printf("cannot malloc\n");
+				return 0;
+			}
+			break;
+		case mmapp:
+			if (!cmd_mmap(flags, nodo)) return 0;
+			break;
+		default:
+			break;
+
+	}
+
+	return 1;
+}
 /*
  * TODO Allocate | reserva memoria y la guarda en la lista, si no se le pasan argumentos muestra los elementos de la lista
  * TODO -malloc [tam] | se le indica el tamaño devuelve la direccion de memoria, sin argumentos lista elementos
@@ -536,31 +605,45 @@ void printList(tType type, tList l) {
  * TODO -shared [cl]
  */
 int cmd_allocate (container *c) {
+	tNodo nodo;
+	FILE *fich;
+	struct element_description description;
 
 	switch (c->nargs) {
 		case 1:
-			return COMANDO_INVALIDO;
-		case 2:
 			printList(-1, c->lista);
+			break;
+		case 2:
+			if (!strcmp(c->flags[1], "-malloc")) printList(mallocc, c->lista);
+			else if (!strcmp(c->flags[1], "-shared") || !strcmp(c->flags[1], "-createshared")) printList(shared, c->lista);
+			else if (!strcmp(c->flags[1], "-mmap")) {
+				printList(mmapp, c->lista);
+			}
+			else return COMANDO_INVALIDO;
 			break;
 		case 3:
 			if(!strcmp(c->flags[1],"-malloc")) {
-				if(c->flags[2]!= NULL){
-					size_t allocSize =(unsigned long) strtol(c->flags[2], NULL, 10);
-					if(allocSize > 0){
-						char *fecha[100];
-						time_util(fecha);
-						tNodo nodo;
-						nodo.tipo = mallocc;
-						nodo.size = allocSize;
-						nodo.fecha = fecha[3];
-						nodo.addr = malloc(allocSize);
-						nodo.extra = NULL;
-						if(!insertItem(nodo,NIL,&c->lista)) return ERROR_INSERT;
-
-					}
+				if (createNodo(c->flags, &nodo, mallocc)) {
+					if (!insertItem(nodo, NIL, &c->lista)) return ERROR_INSERT;
+					else printf("block at address %p allocated (malloc)\n", nodo.addr);
 				}
 			}
+			else if (!strcmp(c->flags[1], "-mmap")) {
+				if (createNodo(c->flags, &nodo, mmapp))
+					if (!insertItem(nodo, NIL, &c->lista)) return ERROR_INSERT;
+			}
+			else if (!strcmp(c->flags[1], "-shared")) {
+				if (createNodo(c->flags, &nodo, shared))
+					if (!insertItem(nodo, NIL, &c->lista)) return ERROR_INSERT;
+			}
+			else return COMANDO_INVALIDO;
+			break;
+		case 4:
+			if (!strcmp(c->flags[1], "-mmap")) {
+				if (createNodo(c->flags, &nodo, mmapp))
+					if (!insertItem(nodo, NIL, &c->lista)) return ERROR_INSERT;
+			}
+			else return COMANDO_INVALIDO;
 			break;
 		default:
 			return COMANDO_INVALIDO;
@@ -571,24 +654,24 @@ int cmd_allocate (container *c) {
 
 int compare(tNodo nodo, void* p, int num) {
 	switch (num) {
-		case 0: return (nodo.tipo == mallocc) && (nodo.size == *((size_t*) p));
-		case 1: return (nodo.tipo == mmapp) && !strcmp(((mmap_info*) nodo.extra)->fich, (char*) p);
-		case 2: return (nodo.tipo == shared) && ((shared_info*) nodo.extra)->key == *((int*) p);
+		case 0: return nodo.tipo == mallocc && nodo.size == (((auxDealloc*) p)->tam);
+		case 1: return nodo.tipo == mmapp && !strcmp(((mmap_info*) nodo.extra)->fich, ((auxDealloc*) p)->file);
+		case 2: return nodo.tipo == shared && ((shared_info*) nodo.extra)->key == ((auxDealloc* ) p)->key;
 		default: return 0;
 	}
 }
 
-void deallocateAux (tList* l, tNodo nodo, tPosL pos, int num) {
+void deallocateAux (tList* l, tNodo nodo, tPosL pos, tType num) {
 	int id;
 	void* p;
 
 	switch (num) {
-		case 0:
+		case mallocc:
 			printf("block at address %p deallocated (malloc)", nodo.addr);
 			deleteAtPosition(pos, l);
 			free(nodo.addr);
 			break;
-		case 1:
+		case mmapp:
 			fsync(((mmap_info*)nodo.extra)->fd);
 			if (!close(((mmap_info*)nodo.extra)->fd)) {
 				printf("block at address %p deallocated (mmap)", nodo.addr);
@@ -597,7 +680,7 @@ void deallocateAux (tList* l, tNodo nodo, tPosL pos, int num) {
 			}
 			else printf("cannot unmap %s: %s",((mmap_info* )nodo.extra)->fich, strerror(errno));
 			break;
-		case 2:
+		case shared:
 			printf("block at address %p deallocated (shared)", nodo.addr);
 			id = shmget(((shared_info* )nodo.extra)->key, nodo.size, 0);
 			p = shmat(id, nodo.addr, 0);
@@ -617,11 +700,11 @@ void searchDealloc (tType type, auxDealloc aux, tList* l) {
 	if (!isEmptyList(*l)) {
 		while ((i != NIL) && !b) {
 			nodo = getItem(i, *l);
-			if (compare(nodo, aux.tam, type)) b = 1;
+			if (compare(nodo, &aux, type)) b = 1;
 			else i = next(i, *l);
 		}
 		if (b) {
-			deallocateAux(l, nodo, i, 0);
+			deallocateAux(l, nodo, i, type);
 		} else printList(type, *l);
 	}
 	else printList(type, *l);
@@ -634,11 +717,8 @@ void searchDealloc (tType type, auxDealloc aux, tList* l) {
 int cmd_deallocate (container* c){
 	tNodo nodo;
 	tPosL i;
-	int b = 0;
 	auxDealloc aux;
 
-	aux.key = malloc(sizeof(int));
-	aux.tam = malloc(sizeof(unsigned long));
 	aux.file = malloc(sizeof(char)*200);
 
 	switch (c->nargs) {
@@ -650,7 +730,7 @@ int cmd_deallocate (container* c){
 			else if (!strcmp(c->flags[1], "-mmap")) printList(mmapp, c->lista);
 			else if (!strcmp(c->flags[1], "-shared")) printList(shared, c->lista);
 			else {
-				i = findItem((void* ) c->flags[1], c->lista);
+				i = findItem(c->flags[1], c->lista);
 				if (i != NIL) {
 					nodo = getItem(i, c->lista);
 					deallocateAux(&c->lista, nodo, i, nodo.tipo);
@@ -660,7 +740,7 @@ int cmd_deallocate (container* c){
 			break;
 		case 3:
 			if (!strcmp(c->flags[1], "-malloc")) {
-				*aux.tam = (unsigned long) strtol(c->flags[2], NULL, 10);
+				aux.tam = strtoul(c->flags[2], NULL, 10);
 				searchDealloc(mallocc, aux, &c->lista);
 			}
 			else if (!strcmp(c->flags[1], "-mmap")){
@@ -668,26 +748,20 @@ int cmd_deallocate (container* c){
 				searchDealloc(mmapp, aux, &c->lista);
 			}
 			else if (!strcmp(c->flags[1], "-shared")) {
-				*aux.key = (int) strtoimax(c->flags[2], NULL, 10);
+				aux.key = (int) strtoimax(c->flags[2], NULL, 10);
 				searchDealloc(shared, aux, &c->lista);
 			}
 			else {
-				free(aux.key);
 				free(aux.file);
-				free(aux.tam);
 				return COMANDO_INVALIDO;
 			}
 			break;
 		default:
-			free(aux.key);
 			free(aux.file);
-			free(aux.tam);
 			return COMANDO_INVALIDO;
 	}
 
-	free(aux.key);
 	free(aux.file);
-	free(aux.tam);
 	return 0;
 }
 /*

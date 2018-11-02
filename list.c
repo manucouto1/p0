@@ -11,7 +11,7 @@ int isEmptyList(tList l) {
 }
 
 tPosL first(tList l) {
-	return 1;
+	return 0;
 }
 
 tPosL last(tList l) {
@@ -56,20 +56,21 @@ int insertItem (tNodo item, tPosL pos, tList* l) {
 tPosL findItem (tAddr addr, tList l) {
 	tPosL p;
 
-	p = first(l);
-
-	while ((p != NIL) && (memcmp(l.Array[p].addr,addr,NULL))) {
-		p = next(p, l);
+	if (!isEmptyList(l)) {
+		p = first(l);
+		while ((p != NIL) && (memcmp(addr, l.Array[p].addr, 100*sizeof(tAddr)))) {
+			p = next(p, l);
+		}
+		return p;
 	}
-
-	return p;
+	else return NIL;
 }
 
 void deleteAtPosition (tPosL p, tList* l) {
 	tPosL i;
 
 	for (i = p; i <= l->fin - 1; i++) {
-		l->Array[i] = l->Array[i - 1];
+		l->Array[i] = l->Array[i + 1];
 	}
 	l->fin = l->fin - 1;
 }

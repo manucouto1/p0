@@ -1,14 +1,15 @@
 #include <stddef.h>
 #include <bits/types/time_t.h>
+#include <bits/types/struct_tm.h>
 
 #define MAX 4096
-#define NIL 0
+#define NIL -1
 
 typedef void *tAddr;
 typedef enum { mallocc = 0, mmapp = 1, shared = 2} tType;
 
 typedef struct {
-	char* fecha;
+	struct tm fecha;
 	tType tipo;
 	size_t size;
 	void* addr;
@@ -23,6 +24,7 @@ typedef struct {
 typedef  struct {
 	int key;
 } shared_info;
+
 typedef int tPosL;
 
 typedef struct {
