@@ -35,7 +35,9 @@ typedef struct {
 	int data_size;
 	char *command;
 	char *date;
+	void *extra;
 }tDato;
+
 
 struct element_description{
 	uintmax_t nInodo;
