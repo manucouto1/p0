@@ -305,15 +305,15 @@ int cmd_delete(container* c) {
 				printf("cannot delete %s: %s\n",c->flags[1], strerror(errno));
 			}
 		case 3:
-			if (strcmp(c->flags[1], "-r")) {
-				return COMANDO_INVALIDO;
-			} else {
+			if (!strcmp(c->flags[1], "-r")) {
 				if (!stat(c->flags[2], &path_stat)) {
 					borrar_rec(c->flags[2], path_stat);
 				}
 				else {
 					printf("cannot delete %s: %s\n",c->flags[2], strerror(errno));
 				}
+			} else {
+				return COMANDO_INVALIDO;
 			}
 			return 0;
 		default:
@@ -893,6 +893,5 @@ int main() {
 		salir = procesarEntrada(entrada, &c);
 		if(salir<0)printf("%s",ERROR_MESAGES[abs(salir)]);
 	}
-
 	free(entrada);
 }
