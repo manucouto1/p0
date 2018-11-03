@@ -53,17 +53,23 @@ int insertItem (tNodo item, tPosL pos, tList* l) {
 	}
 }
 
-tPosL findItem (tAddr addr, tList l) {
+tPosL findItem (char* addr, tList l) {
 	tPosL p;
+	int b = 0;
+	char addrAux [50];
 
 	if (!isEmptyList(l)) {
 		p = first(l);
-		while ((p != NIL) && (memcmp(addr, l.Array[p].addr, 100*sizeof(tAddr)))) {
-			p = next(p, l);
+		while ((p != NIL) && !b) {
+			sprintf(addrAux,"%p", l.Array[p].addr);
+			if (strcmp(addr, addrAux)) p = next(p, l);
+			else b = 1;
 		}
 		return p;
 	}
-	else return NIL;
+	else {
+		return NIL;
+	}
 }
 
 void deleteAtPosition (tPosL p, tList* l) {

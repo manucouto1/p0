@@ -39,7 +39,7 @@ tPosL last (tList list);
 tPosL next (tPosL pos, tList list);
 tPosL previous (tPosL pos, tList list);
 int insertItem (tNodo item, tPosL pos, tList* l);
-tPosL findItem(tAddr addr, tList list);
+tPosL findItem(char* addr, tList list);
 void deleteAtPosition (tPosL pos, tList* list);
 void updateItem(tList* list, tPosL pos, tNodo nodo);
 tNodo getItem (tPosL pos, tList list);

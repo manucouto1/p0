@@ -134,7 +134,7 @@ int cmd_autores(container* c){
 
 }
 
-int cmd_pid(container *c) {
+int cmd_pid(container* c) {
 	switch (c->nargs) {
 		case 1:
 			printf("Process ID: %d", getpid());
@@ -172,7 +172,7 @@ int cmd_hora (container* c){
 	}
 }
 
-int cmd_fecha (container *c) {
+int cmd_fecha (container* c) {
 	char * fecha[100];
 	time_util(fecha);
 	switch (c->nargs) {
@@ -204,7 +204,7 @@ int cmd_chdir(container* c){
 	}
 }
 
-int cmd_exit(container *c) {
+int cmd_exit(container* c) {
 	return 1;
 }
 
@@ -279,7 +279,7 @@ int borrar_rec(char *elemento, struct stat path_stat){
 }
 /* - end DELETE util functions */
 
-int cmd_delete(container *c) {
+int cmd_delete(container* c) {
 	/*
 	 * DONE - Eliminar un fichero o un directorio
 	 * DONE - Si no tiene flag el directorio tiene que estar vacio para ser borrado
@@ -447,7 +447,7 @@ int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int
 
 }
 
-int cmd_list(container *c){
+int cmd_list(container* c){
 	int i=1;
 	int nCount=0;
 	int rCount=0;
@@ -556,7 +556,6 @@ void* MmapFichero (char *fichero, int protection, tNodo* nodo) {
 int cmd_mmap (char* arg[], tNodo* nodo) {
 	char* perm;
 	int protection = 0;
-
 	if ((perm = arg[3]) != NULL && strlen(perm) < 4) {
 		if (strchr(perm, 'r') != NULL) protection|=PROT_READ;
 		if (strchr(perm, 'w') != NULL) protection|=PROT_READ;
@@ -576,19 +575,23 @@ int createNodo (char* flags[], tNodo* nodo, tType type) {
 	time(&t);
 	nodo->tipo = type;
 	nodo->fecha = *localtime(&t);
+	nodo->addr = malloc(100);
 
 	switch (type) {
 		case mallocc:
 			nodo->extra = NULL;
 			nodo->size = strtoul(flags[2], NULL, 10);
-			nodo->addr = malloc(nodo->size);
 			if (nodo->addr == NULL){
+				free(nodo->addr);
 				printf("cannot malloc\n");
 				return 0;
 			}
 			break;
 		case mmapp:
-			if (!cmd_mmap(flags, nodo)) return 0;
+			if (!cmd_mmap(flags, nodo)) {
+				free(nodo->addr);
+				return 0;
+			}
 			break;
 		default:
 			break;
@@ -604,10 +607,8 @@ int createNodo (char* flags[], tNodo* nodo, tType type) {
  * TODO -createshared [cl] [tam]
  * TODO -shared [cl]
  */
-int cmd_allocate (container *c) {
+int cmd_allocate (container* c) {
 	tNodo nodo;
-	FILE *fich;
-	struct element_description description;
 
 	switch (c->nargs) {
 		case 1:
@@ -676,6 +677,7 @@ void deallocateAux (tList* l, tNodo nodo, tPosL pos, tType num) {
 			if (!close(((mmap_info*)nodo.extra)->fd)) {
 				printf("block at address %p deallocated (mmap)", nodo.addr);
 				munmap(nodo.addr, nodo.size);
+				free(((mmap_info* )nodo.extra)->fich);
 				deleteAtPosition(pos, l);
 			}
 			else printf("cannot unmap %s: %s",((mmap_info* )nodo.extra)->fich, strerror(errno));
@@ -685,6 +687,8 @@ void deallocateAux (tList* l, tNodo nodo, tPosL pos, tType num) {
 			id = shmget(((shared_info* )nodo.extra)->key, nodo.size, 0);
 			p = shmat(id, nodo.addr, 0);
 			shmdt(p);
+			free((shared_info* )nodo.extra);
+			free(nodo.addr);
 			deleteAtPosition(pos, l);
 			break;
 		default:
@@ -718,7 +722,6 @@ int cmd_deallocate (container* c){
 	tNodo nodo;
 	tPosL i;
 	auxDealloc aux;
-
 	aux.file = malloc(sizeof(char)*200);
 
 	switch (c->nargs) {
@@ -760,7 +763,6 @@ int cmd_deallocate (container* c){
 			free(aux.file);
 			return COMANDO_INVALIDO;
 	}
-
 	free(aux.file);
 	return 0;
 }
@@ -861,7 +863,7 @@ int cmdManager(container* c){
 	return COMANDO_INVALIDO;
 }
 
-int procesarEntrada(char * cadena, container *c){
+int procesarEntrada(char * cadena, container* c){
 
 	if((c->nargs = trocearCadena(cadena, c->flags))){
 		return cmdManager(c);
@@ -877,15 +879,13 @@ int procesarEntrada(char * cadena, container *c){
 int main() {
 
 	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File", "ERROR Deleting Directory","ERROR Listing", "ERROR Inserting"};
-	tList l;
 
 	clear();
 	char * entrada ;
 	container c;
 	int salir = 0;
 	entrada = malloc(1024);
-	createEmptyList(&l);
-	c.lista = l;
+	createEmptyList(&c.lista);
 
 	while ((salir<=0)) {
 		imprimirPrompt();
@@ -893,5 +893,6 @@ int main() {
 		salir = procesarEntrada(entrada, &c);
 		if(salir<0)printf("%s",ERROR_MESAGES[abs(salir)]);
 	}
+
 	free(entrada);
 }
