@@ -12,7 +12,12 @@
 #include <string.h>
 #include <inttypes.h>
 #include <fcntl.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/mman.h>
+
 #include "list.h"
+
 
 #define COMANDO_INVALIDO -1
 #define ERROR_CREATING_FILE -2
@@ -20,7 +25,7 @@
 #define ERROR_DELETING_DIR -4
 #define ERROR_LISTING -5
 #define ERROR_INSERT -6
-
+#define ERROR_IPC -7
 
 #define clear() printf("\033[H\033[J")
 
@@ -38,6 +43,10 @@ typedef struct {
 	void *extra;
 }tDato;
 
+typedef struct {
+	int proteccion;
+	char * fichero;
+}tMap;
 
 struct element_description{
 	uintmax_t nInodo;
@@ -505,13 +514,112 @@ int printList(char *comando, tList l) {
 	tPosL i = first(l);
 
 	// ver si el commando existe y devolver comando invalido?
-	while ((i != NIL) && ((tDato*)(nodo = getItem(i, l)).dato)->command != comando) {
-		tDato *datoAux = (tDato*)nodo.dato;
-		printf("%p: size:%d %s %s", datoAux->pointer, datoAux->data_size, datoAux->command, datoAux->date);
+
+
+	while ((i != NIL)) {
+		nodo = getItem(i,l);
+		tDato *datoAux = (tDato*) nodo.dato;
+
+		if(!strcmp(comando,"-malloc")&&!strcmp(datoAux->command,"malloc")){
+			printf("%p: size:%d %s %s\n", datoAux->pointer, datoAux->data_size, datoAux->command, datoAux->date);
+		} else if (!strcmp(comando,"-mmap")&&!strcmp(datoAux->command,"mmap")){
+			tMap *mapAux = (tMap*)datoAux->extra;
+			printf("%p: size:%d %s %s (fd:%1d) %s\n", datoAux->pointer, datoAux->data_size, datoAux->command,
+					mapAux->fichero, mapAux->proteccion, datoAux->date);
+		}
 		i = next(i,l);
 	}
+
 	return 0;
 }
+
+void *ObtenerMemoriaShmget (key_t key, size_t tam) {
+	void *p;
+	int aux,id,flags=0777;
+
+	struct shmid_ds s;
+
+	if(tam){
+		flags = flags | IPC_CREAT | IPC_EXCL;
+	}
+	if(key == IPC_PRIVATE){
+		errno = EINVAL;
+		return ERROR_IPC;
+	}
+	if((id=shmget(key, tam, flags))==-1){
+		return ERROR_IPC;
+	}
+	if((p=shmat(key, tam, flags))==(void*) -1){
+		aux = errno;
+		if (tam)
+			shmctl(id,IPC_RMID,NULL);
+		errno = aux;;
+		return ERROR_IPC;
+	}
+	shmctl(id,IPC_STAT, &s);
+	return p;
+}
+
+void *MmapFichero (char *fichero, int protection, tNodo *nodo){
+	int df, map=MAP_PRIVATE, modo=O_RDONLY;
+	struct stat s;
+	void *p;
+	char *fecha[100];
+
+
+	tDato *dato= malloc(sizeof(tDato));
+	tMap *mapData = malloc(sizeof(tMap));
+	char *aux = malloc(sizeof(char)*100);
+
+	if(protection&PROT_WRITE) modo=O_RDWR;
+	if(stat(fichero,&s)==-1 || (df=open(fichero,modo))==-1){
+		free(dato);
+		free(mapData);
+		return NULL;
+	}
+	if((p=mmap (NULL, (size_t) s.st_size, protection, map, df, 0)) == MAP_FAILED){
+		free(dato);
+		free(mapData);
+		return NULL;
+	}
+	time_util(fecha);
+	sprintf(aux, "%s %s %s %s %s",fecha[0], fecha[1],
+	        fecha[2], fecha[3], fecha[4]);
+	// General data
+	(*dato).date = aux;
+	(*dato).data_size = (int)s.st_size;
+	(*dato).command = "mmap";
+	(*dato).pointer = p;
+	// Especific map data
+	(*mapData).fichero = fichero;
+	(*mapData).proteccion = protection;
+	// Pushing data
+	(*dato).extra = mapData;
+	(*nodo).dato = dato;
+	(*nodo).id = (*dato).pointer;
+
+	return p;
+}
+
+void *ObtenerMemoriaMalloc(int allocSize,tNodo *nodo) {
+	char *fecha[100];
+	time_util(fecha);
+	char *aux = malloc(sizeof(char)*100);
+	tDato *dato= malloc(sizeof(tDato));
+
+	(*dato).command = "malloc";
+	(*dato).data_size = allocSize;
+	sprintf(aux, "%s %s %s %s %s",fecha[0], fecha[1],
+	        fecha[2], fecha[3], fecha[4]);
+	(*dato).date = aux;
+	(*dato).pointer = malloc((size_t)allocSize);
+
+	(*nodo).dato = dato;
+	(*nodo).id = (*dato).pointer;
+	return (*nodo).id;
+}
+
+
 /*
  * TODO Allocate | reserva memoria y la guarda en la lista, si no se le pasan argumentos muestra los elementos de la lista
  * TODO -malloc [tam] | se le indica el tamaño devuelve la direccion de memoria, sin argumentos lista elementos
@@ -521,39 +629,110 @@ int printList(char *comando, tList l) {
  */
 int cmd_allocate (container *c) {
 
+
+
 	switch (c->nargs) {
 		case 1:
+
 			return COMANDO_INVALIDO;
 		case 2:
+
 			printList(c->flags[1], c->lista);
 			break;
 		case 3:
+
 			if(!strcmp(c->flags[1],"-malloc")) {
 				if(c->flags[2]!= NULL){
 					int allocSize = atoi(c->flags[2]);
 					if(allocSize > 0){
-						char *fecha[100];
-						time_util(fecha);
-						tDato *dato= malloc(sizeof(tDato));
+						void *p;
 						tNodo *nodo= malloc(sizeof(tNodo));
-
-						(*dato).command = "malloc";
-						(*dato).data_size = allocSize;
-						(*dato).date = fecha[3];
-						(*dato).pointer = malloc(allocSize);
-
-						(*nodo).dato = dato;
-						(*nodo).id = (*dato).pointer;
-
-						if(insertItem(*nodo,next(last(c->lista),c->lista),&(c->lista))){
-							return 0;
-						} else {
-							return ERROR_INSERT;
+						if((p=ObtenerMemoriaMalloc(allocSize, nodo))==NULL){
+							perror("Imposible reservar memoria");
+							return ERROR_IPC; //Cambiar el tipo del error
+						}else{
+							if(insertItem(*nodo,next(last(c->lista),c->lista),&(c->lista))){
+								printf("Memoria reservada %d en %p\n", allocSize, p);
+								return 0;
+							} else {
+								free(nodo);
+								return ERROR_INSERT;
+							}
 						}
 					}
 				}
+			} else if(!strcmp(c->flags[1],"-shared")) {
+
 			}
 			return 0;
+
+		case 4 :
+			if(!strcmp(c->flags[1],"-mmap")){
+				char *perm;
+				void *p;
+				int protection = 0;
+				tNodo *nodo= malloc(sizeof(tNodo));
+				perm = c->flags[3];
+				if(strlen(perm)<4){
+					if (strchr(perm,'r')!=NULL) protection|=PROT_READ;
+					if (strchr(perm,'w')!=NULL) protection|=PROT_WRITE;
+					if (strchr(perm,'x')!=NULL) protection|=PROT_EXEC;
+				}
+				if((p=MmapFichero(c->flags[2],protection,nodo))==NULL){
+					perror("Imposible mapear fichero");
+					return ERROR_IPC; //Cambiar el tipo del error
+				} else {
+					if(insertItem(*nodo,next(last(c->lista),c->lista),&(c->lista))){
+						printf("fichero %s mapeado en %p\n", ((tMap*)((tDato*)nodo->dato)->extra)->fichero, p);
+						return 0;
+					} else {
+						return ERROR_INSERT;
+					}
+				}
+
+			} if(!strcmp(c->flags[1],"-createshared")){
+				key_t key;
+				off_t tam = 0;
+				void *p;
+				tNodo *nodo= malloc(sizeof(tNodo));
+
+				tam = (off_t) atoi(c->flags[2]);
+
+				if (c->flags[2]!=NULL){
+					tam=(off_t) atoll(c->flags[2]);
+				}
+				if((p=ObtenerMemoriaShmget(key,tam))==NULL){
+					perror("Imposible obtener memoria Shmget");
+					return ERROR_IPC; //CAMBIAR TIPO ERROR
+				} else {
+					char *fecha[100];
+					time_util(fecha);
+					int allocSize;
+					if((allocSize= atoi(c->flags[2])>0)){
+						char *aux = malloc(sizeof(char)*100);
+						tDato *dato= malloc(sizeof(tDato));
+						(*dato).command = "-createshared";
+						(*dato).data_size = c->flags[2];
+						sprintf(aux, "%s %s %s %s %s",fecha[0], fecha[1],
+						        fecha[2], fecha[3], fecha[4]);
+						(*dato).date = aux;
+						(*dato).pointer = malloc(allocSize);
+						(*nodo).dato = dato;
+						(*nodo).id = (*dato).pointer;
+						printf("Memoria de shget de clave %d asignada en %p\n", key, p);
+						return  0;
+					} else {
+						free(nodo);
+						perror("Tamaño de memoria invalido");
+						return ERROR_IPC;
+					}
+
+				}
+
+			} else {
+				return COMANDO_INVALIDO;
+			}
+
 		default:
 			return COMANDO_INVALIDO;
 	}
@@ -692,6 +871,21 @@ int procesarEntrada(char * cadena, container *c){
 	}
 	return 0;
 }
+
+void freeList(tList l){
+
+	tPosL pos = first(l);
+	tNodo aux;
+
+	while(!isEmptyList(l)){
+		aux = getItem(pos,l);
+		free(aux.id);
+		free(aux.dato);
+		deleteAtPosition(pos,&l);
+		pos = next(pos,l);
+	}
+	printf(" Bye !");
+}
 /*
  * DONE - Separar los comandos query y list en dos archivos query.c y list.c
  * DONE - Hacer que el programa pueda lidiar con caracteres tipo (*,?,...)
@@ -700,22 +894,24 @@ int procesarEntrada(char * cadena, container *c){
  */
 int main() {
 
-	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File", "ERROR Deleting Directory","ERROR Listing","ERROR Inserting"};
+	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File",
+						  "ERROR Deleting Directory","ERROR Listing","ERROR Inserting", "ERROR IPC"};
 	tList l;
 
 	clear();
 	char * entrada ;
-	container c;
+	container *c = malloc(sizeof(container)*1024);
 	int salir = 0;
 	entrada = malloc(1024);
 	createEmptyList(&l);
-	c.lista = l;
+	c->lista = l;
 
 	while ((salir<=0)) {
 		imprimirPrompt();
 		leerEntrada(entrada);
-		salir = procesarEntrada(entrada, &c);
+		salir = procesarEntrada(entrada, c);
 		if(salir<0)printf("%s",ERROR_MESAGES[abs(salir)]);
 	}
+	freeList(c->lista);
 	free(entrada);
 }
