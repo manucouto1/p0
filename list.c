@@ -1,7 +1,6 @@
 #include "list.h"
 #include <stdio.h>
-
-
+#include <memory.h>
 
 void createEmptyList(tList* l) {
 	l->fin = NIL;
@@ -12,7 +11,7 @@ int isEmptyList(tList l) {
 }
 
 tPosL first(tList l) {
-	return 1;
+	return 0;
 }
 
 tPosL last(tList l) {
@@ -33,7 +32,7 @@ tPosL next(tPosL p, tList l) {
 	else return NIL;
 }
 
-int insertItem (tNodo nodo, tPosL pos, tList* l) {
+int insertItem (tNodo item, tPosL pos, tList* l) {
 	tPosL i;
 
 	if (l->fin == MAX) {
@@ -42,42 +41,47 @@ int insertItem (tNodo nodo, tPosL pos, tList* l) {
 	else {
 		l->fin = l->fin + 1;
 		if (pos == NIL) {
-			l->Array[l->fin] = nodo;
+			l->Array[l->fin] = item;
 		}
 		else {
 			for (i = l->fin; i >= pos + 1; i--) {
 				l->Array[i] = l->Array[i - 1];
 			}
-			l->Array[pos] = nodo;
+			l->Array[pos] = item;
 		}
 		return 1;
 	}
 }
 
-tPosL findItem (tNodo nodo, tList l) {
+tPosL findItem (char* addr, tList l) {
 	tPosL p;
+	int b = 0;
+	char addrAux [50];
 
-	p = first(l);
-	while ((p < l.fin) && (l.Array[p].id != nodo.id)) {
-		p = next(p, l);
-	}
-
-	if (nodo.id == l.Array[p].id) {
+	if (!isEmptyList(l)) {
+		p = first(l);
+		while ((p != NIL) && !b) {
+			sprintf(addrAux,"%p", l.Array[p].addr);
+			if (strcmp(addr, addrAux)) p = next(p, l);
+			else b = 1;
+		}
 		return p;
 	}
-	return NIL;
+	else {
+		return NIL;
+	}
 }
 
 void deleteAtPosition (tPosL p, tList* l) {
 	tPosL i;
 
 	for (i = p; i <= l->fin - 1; i++) {
-		l->Array[i] = l->Array[i - 1];
+		l->Array[i] = l->Array[i + 1];
 	}
 	l->fin = l->fin - 1;
 }
 
-void updateItem (tList* l, tPosL p,tNodo nodo) {
+void updateItem (tList* l, tPosL p, tNodo nodo) {
 	l->Array[p] = nodo;
 }
 

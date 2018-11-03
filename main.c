@@ -17,6 +17,10 @@
 #include <sys/mman.h>
 
 #include "list.h"
+#include <sys/mman.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+
 
 
 #define COMANDO_INVALIDO -1
@@ -58,6 +62,12 @@ struct element_description{
 	long size;
 	char fecha[200];
 };
+
+typedef struct {
+	int key;
+	size_t tam;
+	char* file;
+} auxDealloc;
 
 int trocearCadena ( char * cadena, char * trozos[]){
 	int  i = 1;
@@ -396,7 +406,7 @@ void print_element(struct element_description elements_description, int argN){
 	}
 }
 
-int cmd_query(container *c) {
+int cmd_query(container* c) {
 	/*
 	 * DONE - Devuelve informacion de los archivos/directorios pasados como argumentos
 	 * DONE - Produce una linea por arch/dir pasado como argumento
@@ -455,7 +465,7 @@ int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int
 
 }
 
-int cmd_list(container *c){
+int cmd_list(container* c){
 	int i=1;
 	int nCount=0;
 	int rCount=0;
@@ -509,28 +519,65 @@ int cmd_list(container *c){
 
 
 }
-int printList(char *comando, tList l) {
+
+void printList(char *comando, tList l) {
 	tNodo nodo;
 	tPosL i = first(l);
 
-	// ver si el commando existe y devolver comando invalido?
-
-
-	while ((i != NIL)) {
-		nodo = getItem(i,l);
-		tDato *datoAux = (tDato*) nodo.dato;
-
-		if(!strcmp(comando,"-malloc")&&!strcmp(datoAux->command,"malloc")){
-			printf("%p: size:%d %s %s\n", datoAux->pointer, datoAux->data_size, datoAux->command, datoAux->date);
-		} else if (!strcmp(comando,"-mmap")&&!strcmp(datoAux->command,"mmap")){
-			tMap *mapAux = (tMap*)datoAux->extra;
-			printf("%p: size:%d %s %s (fd:%1d) %s\n", datoAux->pointer, datoAux->data_size, datoAux->command,
-					mapAux->fichero, mapAux->proteccion, datoAux->date);
+	if (!isEmptyList(l)) {
+		while (i != NIL) {
+			if (((nodo = getItem(i, l)).tipo == type) || (type == -1)) {
+				switch (nodo.tipo) {
+					case mallocc:
+						printf("%p: size:%lu malloc %s", nodo.addr, nodo.size, asctime(&nodo.fecha));
+						break;
+					case mmapp:
+						printf("%p: size:%lu mmap %s (fd: %d) %s", nodo.addr, nodo.size,
+							   ((mmap_info *) nodo.extra)->fich,
+							   ((mmap_info *) nodo.extra)->fd, asctime(&nodo.fecha));
+						break;
+					case shared:
+						printf("%p: size:%lu shared memory (key: %d) %s", nodo.addr, nodo.size,
+							   ((shared_info *) nodo.extra)->key, asctime(&nodo.fecha));
+						break;
+					default:
+						break;
+				}
+			}
+			i = next(i, l);
 		}
-		i = next(i,l);
+	}
+}
+
+int createNodo (char* flags[], tNodo* nodo, tType type) {
+	time_t t;
+	time(&t);
+	nodo->tipo = type;
+	nodo->fecha = *localtime(&t);
+	nodo->addr = malloc(100);
+
+	switch (type) {
+		case mallocc:
+			nodo->extra = NULL;
+			nodo->size = strtoul(flags[2], NULL, 10);
+			if (nodo->addr == NULL){
+				free(nodo->addr);
+				printf("cannot malloc\n");
+				return 0;
+			}
+			break;
+		case mmapp:
+			if (!cmd_mmap(flags, nodo)) {
+				free(nodo->addr);
+				return 0;
+			}
+			break;
+		default:
+			break;
+
 	}
 
-	return 0;
+	return 1;
 }
 
 void *ObtenerMemoriaShmget (key_t key, size_t tam) {
@@ -638,6 +685,12 @@ int cmd_allocate (container *c) {
 		case 2:
 
 			printList(c->flags[1], c->lista);
+			if (!strcmp(c->flags[1], "-malloc")) printList(mallocc, c->lista);
+			else if (!strcmp(c->flags[1], "-shared") || !strcmp(c->flags[1], "-createshared")) printList(shared, c->lista);
+			else if (!strcmp(c->flags[1], "-mmap")) {
+				printList(mmapp, c->lista);
+			}
+			else return COMANDO_INVALIDO;
 			break;
 		case 3:
 
@@ -738,33 +791,75 @@ int cmd_allocate (container *c) {
 	}
 }
 
+void searchDealloc (tType type, auxDealloc aux, tList* l) {
+	int i, b = 0;
+	i = first(*l);
+	tNodo nodo;
+
+	if (!isEmptyList(*l)) {
+		while ((i != NIL) && !b) {
+			nodo = getItem(i, *l);
+			if (compare(nodo, &aux, type)) b = 1;
+			else i = next(i, *l);
+		}
+		if (b) {
+			deallocateAux(l, nodo, i, type);
+		} else printList(type, *l);
+	}
+	else printList(type, *l);
+}
 /*
- * TODO Delocate | lobera una de las direcciones de memorias reservadas en la lista, sin argumentos lista las direcciones
+ * TODO Deallocate | lobera una de las direcciones de memorias reservadas en la lista, sin argumentos lista las direcciones
  * TODO -malloc [tam] | Se elimina uno de los bloques de tamaño [tam] de la lista, si no hay o no se pasa argumento lista
  * TODO -mmap fich | deshace un mapeo del fichero <-> memoria y borra de lista,
  */
-int cmd_deallocate (container *c){
+int cmd_deallocate (container* c){
 	tNodo nodo;
-	tDato dato;
+	tPosL i;
+	auxDealloc aux;
+	aux.file = malloc(sizeof(char)*200);
 
 	switch (c->nargs) {
 		case 1:
-			// No hace nada
-			return COMANDO_INVALIDO;
+			printList(-1, c->lista);
+			break;
 		case 2:
-			return printList(c->flags[1], c->lista);
+			if (!strcmp(c->flags[1], "-malloc")) printList(mallocc, c->lista);
+			else if (!strcmp(c->flags[1], "-mmap")) printList(mmapp, c->lista);
+			else if (!strcmp(c->flags[1], "-shared")) printList(shared, c->lista);
+			else {
+				i = findItem(c->flags[1], c->lista);
+				if (i != NIL) {
+					nodo = getItem(i, c->lista);
+					deallocateAux(&c->lista, nodo, i, nodo.tipo);
+				}
+				else printList(-1, c->lista);
+			}
+			break;
 		case 3:
-			// en el id guardamos la direccion de memoria
-			// hay que ver si va bien porque nosotros estamos comparando un string con una direccion de memoria
-			// puede que haya que convertir el puntero a string o el string a puntero para que vaya bien
-
 			if (!strcmp(c->flags[1], "-malloc")) {
-				nodo.id = c->flags[2];
+				aux.tam = strtoul(c->flags[2], NULL, 10);
+				searchDealloc(mallocc, aux, &c->lista);
+			}
+			else if (!strcmp(c->flags[1], "-mmap")){
+				strcpy(aux.file, c->flags[2]);
+				searchDealloc(mmapp, aux, &c->lista);
+			}
+			else if (!strcmp(c->flags[1], "-shared")) {
+				aux.key = (int) strtoimax(c->flags[2], NULL, 10);
+				searchDealloc(shared, aux, &c->lista);
+			}
+			else {
+				free(aux.file);
+				return COMANDO_INVALIDO;
 			}
 			break;
 		default:
+			free(aux.file);
 			return COMANDO_INVALIDO;
 	}
+	free(aux.file);
+	return 0;
 }
 /*
  *TODO rmkey cl | Elimina la región de memoria compartida de llave cl. Simplemente es una llamada a shmctl(id, IPC RMID ...)
@@ -864,7 +959,7 @@ int cmdManager(container* c){
 	return COMANDO_INVALIDO;
 }
 
-int procesarEntrada(char * cadena, container *c){
+int procesarEntrada(char *cadena, container *c){
 
 	if((c->nargs = trocearCadena(cadena, c->flags))){
 		return cmdManager(c);
@@ -900,18 +995,17 @@ int main() {
 
 	clear();
 	char * entrada ;
-	container *c = malloc(sizeof(container)*1024);
+	container c;
 	int salir = 0;
 	entrada = malloc(1024);
-	createEmptyList(&l);
-	c->lista = l;
+	createEmptyList(&c.lista);
 
 	while ((salir<=0)) {
 		imprimirPrompt();
 		leerEntrada(entrada);
-		salir = procesarEntrada(entrada, c);
+		salir = procesarEntrada(entrada, &c);
 		if(salir<0)printf("%s",ERROR_MESAGES[abs(salir)]);
 	}
-	freeList(c->lista);
+	freeList(c.lista);
 	free(entrada);
 }
