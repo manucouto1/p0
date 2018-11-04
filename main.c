@@ -33,6 +33,8 @@
 
 #define clear() printf("\033[H\033[J")
 
+typedef enum { mallocc = 0, mmapp = 1, shared = 2} tType;
+
 typedef struct {
 	tList lista;
 	int nargs;
@@ -51,6 +53,10 @@ typedef struct {
 	int proteccion;
 	char * fichero;
 }tMap;
+
+typedef struct {
+	int key;
+}tShared;
 
 struct element_description{
 	uintmax_t nInodo;
@@ -520,25 +526,34 @@ int cmd_list(container* c){
 
 }
 
-void printList(char *comando, tList l) {
+
+
+void printList(tType tipoComando, tList l) {
 	tNodo nodo;
+	tShared shar;
+	tDato dato;
+	tMap map;
 	tPosL i = first(l);
+	tType type;
 
 	if (!isEmptyList(l)) {
 		while (i != NIL) {
-			if (((nodo = getItem(i, l)).tipo == type) || (type == -1)) {
-				switch (nodo.tipo) {
+			if (((tType)(nodo = getItem(i, l)).tipo == tipoComando) || tipoComando == -1) {
+				dato = *((tDato*) nodo.dato);
+				type = (tType) nodo.tipo;
+				switch (type) {
 					case mallocc:
-						printf("%p: size:%lu malloc %s", nodo.addr, nodo.size, asctime(&nodo.fecha));
+						printf("%p: size:%d malloc %s\n", dato.pointer, dato.data_size, dato.date);
 						break;
 					case mmapp:
-						printf("%p: size:%lu mmap %s (fd: %d) %s", nodo.addr, nodo.size,
-							   ((mmap_info *) nodo.extra)->fich,
-							   ((mmap_info *) nodo.extra)->fd, asctime(&nodo.fecha));
+						map = *((tMap*)dato.extra);
+						printf("%p: size:%d mmap %s (fd: %d) %s\n", dato.pointer, dato.data_size,
+							   map.fichero, map.proteccion, dato.date);
 						break;
 					case shared:
-						printf("%p: size:%lu shared memory (key: %d) %s", nodo.addr, nodo.size,
-							   ((shared_info *) nodo.extra)->key, asctime(&nodo.fecha));
+						shar = *((tShared*)dato.extra);
+						printf("%p: size:%d shared memory (key: %d) %s\n", dato.pointer, dato.data_size,
+							   shar.key, dato.date);
 						break;
 					default:
 						break;
@@ -550,6 +565,7 @@ void printList(char *comando, tList l) {
 }
 
 int createNodo (char* flags[], tNodo* nodo, tType type) {
+	/*
 	time_t t;
 	time(&t);
 	nodo->tipo = type;
@@ -578,6 +594,7 @@ int createNodo (char* flags[], tNodo* nodo, tType type) {
 	}
 
 	return 1;
+	 */
 }
 
 void *ObtenerMemoriaShmget (key_t key, size_t tam) {
@@ -591,20 +608,31 @@ void *ObtenerMemoriaShmget (key_t key, size_t tam) {
 	}
 	if(key == IPC_PRIVATE){
 		errno = EINVAL;
-		return ERROR_IPC;
+		return NULL;
 	}
 	if((id=shmget(key, tam, flags))==-1){
-		return ERROR_IPC;
+		return NULL;
 	}
 	if((p=shmat(key, tam, flags))==(void*) -1){
 		aux = errno;
 		if (tam)
 			shmctl(id,IPC_RMID,NULL);
 		errno = aux;;
-		return ERROR_IPC;
+		return NULL;
 	}
 	shmctl(id,IPC_STAT, &s);
 	return p;
+}
+
+tDato* loadBasicData(void * pointer, int size, char *command, char *date){
+	tDato *dato = malloc(sizeof(tDato));
+
+	(*dato).pointer = pointer;
+	(*dato).data_size = size;
+	(*dato).command = command;
+	(*dato).date = date;
+
+	return dato;
 }
 
 void *MmapFichero (char *fichero, int protection, tNodo *nodo){
@@ -643,6 +671,7 @@ void *MmapFichero (char *fichero, int protection, tNodo *nodo){
 	// Pushing data
 	(*dato).extra = mapData;
 	(*nodo).dato = dato;
+	(*nodo).tipo = (tType*) mmapp;
 	(*nodo).id = (*dato).pointer;
 
 	return p;
@@ -662,6 +691,7 @@ void *ObtenerMemoriaMalloc(int allocSize,tNodo *nodo) {
 	(*dato).pointer = malloc((size_t)allocSize);
 
 	(*nodo).dato = dato;
+	(*nodo).tipo = (tType*) mallocc;
 	(*nodo).id = (*dato).pointer;
 	return (*nodo).id;
 }
@@ -684,14 +714,11 @@ int cmd_allocate (container *c) {
 			return COMANDO_INVALIDO;
 		case 2:
 
-			printList(c->flags[1], c->lista);
 			if (!strcmp(c->flags[1], "-malloc")) printList(mallocc, c->lista);
 			else if (!strcmp(c->flags[1], "-shared") || !strcmp(c->flags[1], "-createshared")) printList(shared, c->lista);
-			else if (!strcmp(c->flags[1], "-mmap")) {
-				printList(mmapp, c->lista);
-			}
+			else if (!strcmp(c->flags[1], "-mmap")) printList(mmapp, c->lista);
 			else return COMANDO_INVALIDO;
-			break;
+			return 0;
 		case 3:
 
 			if(!strcmp(c->flags[1],"-malloc")) {
@@ -712,6 +739,7 @@ int cmd_allocate (container *c) {
 								return ERROR_INSERT;
 							}
 						}
+						free(nodo);
 					}
 				}
 			} else if(!strcmp(c->flags[1],"-shared")) {
@@ -765,7 +793,7 @@ int cmd_allocate (container *c) {
 						char *aux = malloc(sizeof(char)*100);
 						tDato *dato= malloc(sizeof(tDato));
 						(*dato).command = "-createshared";
-						(*dato).data_size = c->flags[2];
+						(*dato).data_size = allocSize;
 						sprintf(aux, "%s %s %s %s %s",fecha[0], fecha[1],
 						        fecha[2], fecha[3], fecha[4]);
 						(*dato).date = aux;
@@ -791,7 +819,13 @@ int cmd_allocate (container *c) {
 	}
 }
 
-void searchDealloc (tType type, auxDealloc aux, tList* l) {
+void deallocateAux(tList *list, tNodo nodo, tPosL pos, tType tipe){
+	free(nodo.tipo);
+	free(nodo.id);
+	free(nodo.dato);
+	deleteAtPosition(pos,list);
+}
+void searchDealloc (tType type, auxDealloc aux, tList *l) {
 	int i, b = 0;
 	i = first(*l);
 	tNodo nodo;
@@ -799,14 +833,13 @@ void searchDealloc (tType type, auxDealloc aux, tList* l) {
 	if (!isEmptyList(*l)) {
 		while ((i != NIL) && !b) {
 			nodo = getItem(i, *l);
-			if (compare(nodo, &aux, type)) b = 1;
+			if ((tType)nodo.tipo == type) b = 1;
 			else i = next(i, *l);
 		}
 		if (b) {
 			deallocateAux(l, nodo, i, type);
 		} else printList(type, *l);
 	}
-	else printList(type, *l);
 }
 /*
  * TODO Deallocate | lobera una de las direcciones de memorias reservadas en la lista, sin argumentos lista las direcciones
@@ -831,7 +864,7 @@ int cmd_deallocate (container* c){
 				i = findItem(c->flags[1], c->lista);
 				if (i != NIL) {
 					nodo = getItem(i, c->lista);
-					deallocateAux(&c->lista, nodo, i, nodo.tipo);
+					deallocateAux(&c->lista, nodo, i, (tType) nodo.tipo);
 				}
 				else printList(-1, c->lista);
 			}
@@ -967,17 +1000,20 @@ int procesarEntrada(char *cadena, container *c){
 	return 0;
 }
 
-void freeList(tList l){
+void freeList(tList *l){
 
-	tPosL pos = first(l);
+	tPosL pos = first(*l);
 	tNodo aux;
 
-	while(!isEmptyList(l)){
-		aux = getItem(pos,l);
-		free(aux.id);
-		free(aux.dato);
-		deleteAtPosition(pos,&l);
-		pos = next(pos,l);
+	while(!isEmptyList(*l)){
+		if(pos != NIL){
+			aux = getItem(pos,*l);
+			free(aux.tipo);
+			free(aux.id);
+			free(aux.dato);
+			deleteAtPosition(pos,l);
+		}
+		pos = next(pos,*l);
 	}
 	printf(" Bye !");
 }
@@ -991,21 +1027,21 @@ int main() {
 
 	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File",
 						  "ERROR Deleting Directory","ERROR Listing","ERROR Inserting", "ERROR IPC"};
-	tList l;
-
 	clear();
 	char * entrada ;
-	container c;
+	container *c = malloc(sizeof(container));
 	int salir = 0;
 	entrada = malloc(1024);
-	createEmptyList(&c.lista);
+	createEmptyList(&c->lista);
 
-	while ((salir<=0)) {
+	while (salir<=0) {
 		imprimirPrompt();
 		leerEntrada(entrada);
-		salir = procesarEntrada(entrada, &c);
+		salir = procesarEntrada(entrada, c);
 		if(salir<0)printf("%s",ERROR_MESAGES[abs(salir)]);
 	}
-	freeList(c.lista);
+	freeList(&c->lista);
 	free(entrada);
+	free(c);
+	return 0;
 }
