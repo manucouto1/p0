@@ -535,7 +535,6 @@ void* MmapFichero (char *fichero, int protection, tNodo* nodo) {
 	int df, map = MAP_PRIVATE, modo = O_RDONLY;
 	struct stat s;
 	void *p;
-	nodo->extra = malloc(1024);
 	((mmap_info*)nodo->extra)->fich = malloc(sizeof(char)* 200);
 
 	if (protection&PROT_WRITE) modo = O_RDWR;
@@ -570,29 +569,85 @@ int cmd_mmap (char* arg[], tNodo* nodo) {
 	return 1;
 }
 
+void * ObtenerMemoriaShmget (key_t clave, off_t tam) {
+	void * p;
+	int aux,id,flags=0777;
+	struct shmid_ds s;
+
+	if (tam) 	/*si tam no es 0 la crea en modo exclusivo */
+		flags=flags | IPC_CREAT | IPC_EXCL;
+
+	/*si tam es 0 intenta acceder a una ya creada*/
+	if (clave==IPC_PRIVATE) { /*no nos vale*/
+		errno=EINVAL;
+		return NULL;
+	}
+	if ((id=shmget(clave, tam, flags))==-1)
+		return (NULL);
+	if ((p=shmat(id,NULL,0))==(void*) -1){
+		aux=errno;
+
+		/*si se ha creado y no se puede mapear*/
+		if (tam) /*se borra */
+			shmctl(id,IPC_RMID,NULL);
+		errno=aux;
+		return (NULL);
+	}
+	shmctl (id,IPC_STAT,&s);
+/* Guardar En Direcciones de Memoria Shared (p, s.shm_segsz, clave.....);*/
+	return (p);
+}
+
+int Cmd_AllocCreateShared (char* arg[], tNodo* nodo) {
+	key_t k;
+	off_t tam = 0;
+	void* p;
+
+	k = (key_t) atoi(arg[2]);
+
+	if (arg[3] != NULL) tam = (off_t) atol(arg[3]);
+
+	if ((p = ObtenerMemoriaShmget(k,tam)) == NULL)
+		perror ("Imposible obtener memoria shmget: \n");
+	else {
+		printf("Memoria de shmeget de clave %d asignada en %p\n", k, p);
+		nodo->addr = p;
+		((shared_info* ) nodo->extra)->key = k;
+		nodo->size = (unsigned long) tam;
+		return 1;
+	}
+
+	return 0;
+}
 int createNodo (char* flags[], tNodo* nodo, tType type) {
 	time_t t;
 	time(&t);
 	nodo->tipo = type;
 	nodo->fecha = *localtime(&t);
 	nodo->addr = malloc(100);
+	nodo->extra = malloc(1024);
 
 	switch (type) {
 		case mallocc:
+			free(nodo->addr);
 			nodo->extra = NULL;
 			nodo->size = strtoul(flags[2], NULL, 10);
-			if (nodo->addr == NULL){
-				free(nodo->addr);
-				printf("cannot malloc\n");
-				return 0;
-			}
+			nodo->addr = malloc(nodo->size);
 			break;
 		case mmapp:
 			if (!cmd_mmap(flags, nodo)) {
 				free(nodo->addr);
+				free(((mmap_info*) nodo->extra)->fich);
+				free(nodo->extra);
 				return 0;
 			}
 			break;
+		case shared:
+			if (!Cmd_AllocCreateShared(flags, nodo)) {
+				free(nodo->addr);
+				free(nodo->extra);
+				return 0;
+			}
 		default:
 			break;
 
@@ -634,14 +689,20 @@ int cmd_allocate (container* c) {
 					if (!insertItem(nodo, NIL, &c->lista)) return ERROR_INSERT;
 			}
 			else if (!strcmp(c->flags[1], "-shared")) {
-				if (createNodo(c->flags, &nodo, shared))
+				if (createNodo(c->flags, &nodo, shared)) {
 					if (!insertItem(nodo, NIL, &c->lista)) return ERROR_INSERT;
+				}
 			}
+			else if (!strcmp(c->flags[1], "-createshared")) printList(shared, c->lista);
 			else return COMANDO_INVALIDO;
 			break;
 		case 4:
 			if (!strcmp(c->flags[1], "-mmap")) {
 				if (createNodo(c->flags, &nodo, mmapp))
+					if (!insertItem(nodo, NIL, &c->lista)) return ERROR_INSERT;
+			}
+			else if (!strcmp(c->flags[1], "-createshared")) {
+				if (createNodo(c->flags, &nodo, shared))
 					if (!insertItem(nodo, NIL, &c->lista)) return ERROR_INSERT;
 			}
 			else return COMANDO_INVALIDO;
@@ -678,6 +739,7 @@ void deallocateAux (tList* l, tNodo nodo, tPosL pos, tType num) {
 				printf("block at address %p deallocated (mmap)", nodo.addr);
 				munmap(nodo.addr, nodo.size);
 				free(((mmap_info* )nodo.extra)->fich);
+				free((mmap_info* )nodo.extra);
 				deleteAtPosition(pos, l);
 			}
 			else printf("cannot unmap %s: %s",((mmap_info* )nodo.extra)->fich, strerror(errno));
@@ -688,7 +750,6 @@ void deallocateAux (tList* l, tNodo nodo, tPosL pos, tType num) {
 			p = shmat(id, nodo.addr, 0);
 			shmdt(p);
 			free((shared_info* )nodo.extra);
-			free(nodo.addr);
 			deleteAtPosition(pos, l);
 			break;
 		default:
