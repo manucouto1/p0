@@ -278,7 +278,7 @@ int borrar_rec(char *elemento, struct stat path_stat){
 		if ((dir = opendir(elemento)) != NULL) {
 			chdir(elemento);
 			while ((ent = readdir(dir)) !=NULL) {
-				if (strcmp(ent->d_name,".") && strcmp(ent->d_name,"..")) {
+				if (strcmp(ent->d_name,".")==0 && strcmp(ent->d_name,"..")==0) {
 					stat(ent->d_name, &path_stat);
 					borrar_rec(ent->d_name, path_stat);
 				}
@@ -294,14 +294,14 @@ int borrar_rec(char *elemento, struct stat path_stat){
 }
 /* - end DELETE util functions */
 
+/*
+ * DONE - Eliminar un fichero o un directorio
+ * DONE - Si no tiene flag el directorio tiene que estar vacio para ser borrado
+ * DONE - Si tiene un flag -r borrar el contenido y el directorio
+ * DONE - Si no hay argumentos no se hace nada
+ * DONE - Si no se puede eliminar Hay que informar al usuario con un mensaje
+ */
 int cmd_delete(container *c) {
-	/*
-	 * DONE - Eliminar un fichero o un directorio
-	 * DONE - Si no tiene flag el directorio tiene que estar vacio para ser borrado
-	 * DONE - Si tiene un flag -r borrar el contenido y el directorio
-	 * DONE - Si no hay argumentos no se hace nada
-	 * DONE - Si no se puede eliminar Hay que informar al usuario con un mensaje
-	 */
 
 	struct stat path_stat;
 
@@ -402,13 +402,13 @@ void print_element(struct element_description elements_description, int argN){
 	}
 }
 
+/*
+ * DONE - Devuelve informacion de los archivos/directorios pasados como argumentos
+ * DONE - Produce una linea por arch/dir pasado como argumento
+ * DONE - mismo formato que ls -li resolviendo links simbolicos si es necesario
+ * DONE - equivalente a ls -li para archivos y que ls -lid para directorios
+ */
 int cmd_query(container* c) {
-	/*
-	 * DONE - Devuelve informacion de los archivos/directorios pasados como argumentos
-	 * DONE - Produce una linea por arch/dir pasado como argumento
-	 * DONE - mismo formato que ls -li resolviendo links simbolicos si es necesario
-	 * DONE - equivalente a ls -li para archivos y que ls -lid para directorios
-	 */
 
 	int i;
 	struct element_description description;
@@ -436,7 +436,7 @@ int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int
 				nivel++;
 				chdir(elemento);
 				while ((ent = readdir(dir)) != NULL) {
-					if (strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..")) {
+					if (strcmp(ent->d_name, ".")==0 && strcmp(ent->d_name, "..")==0) {
 						lstat(ent->d_name, &path_stat);
 						if (!(!argH && (ent->d_name[0] == '.'))) {
 							fun_list_rec(ent->d_name, path_stat, nivel, argH, argR, argN);
@@ -447,7 +447,7 @@ int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int
 				if (!strcmp(elemento, "..")) {
 					chdir(current);
 				}
-				else if (strcmp(elemento, ".")) chdir("..");
+				else if (strcmp(elemento, ".")==0) chdir("..");
 			}
 		}
 	}
@@ -524,7 +524,6 @@ void printList(tType tipoComando, tList l) {
 	tDato dato;
 	tMap map;
 	tPosL i = first(l);
-	tType type;
 
 	if (!isEmptyList(l)) {
 		while (i != NIL) {
@@ -633,9 +632,9 @@ void *ObtenerMemoriaMalloc(int allocSize,tNodo *nodo) {
 
 
 /*
- * TODO Allocate | reserva memoria y la guarda en la lista, si no se le pasan argumentos muestra los elementos de la lista
- * TODO -malloc [tam] | se le indica el tamaño devuelve la direccion de memoria, sin argumentos lista elementos
- * TODO -mmap fich [perm]
+ * DONE Allocate | reserva memoria y la guarda en la lista, si no se le pasan argumentos muestra los elementos de la lista
+ * DONE -malloc [tam] | se le indica el tamaño devuelve la direccion de memoria, sin argumentos lista elementos
+ * DONE -mmap fich [perm]
  * TODO -createshared [cl] [tam]
  * TODO -shared [cl]
  */
