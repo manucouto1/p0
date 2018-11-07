@@ -176,11 +176,16 @@ void time_util(char * fecha[]){
 }
 
 int cmd_hora (container *c){
-	char * fecha[100];
-	time_util(fecha);
+	struct tm *t;
+	char fecha[200];
+	time_t s;
+	time(&s);
+	t = localtime(&s);
+	strftime(fecha, sizeof(fecha), "%H:%M", t);
+	//time_util(fecha);
 	switch (c->nargs) {
 		case 1 :
-			printf("%s", fecha[3]);
+			printf("%s", fecha);
 			return 0;
 		default:
 			return COMANDO_INVALIDO;
@@ -188,11 +193,16 @@ int cmd_hora (container *c){
 }
 
 int cmd_fecha (container *c) {
-	char * fecha[100];
-	time_util(fecha);
+	struct tm *t;
+	char fecha[200];
+	time_t s;
+	time(&s);
+	t = localtime(&s);
+	strftime(fecha, sizeof(fecha), "%d/%m/%Y", t);
+	//time_util(fecha);
 	switch (c->nargs) {
 		case 1:
-			printf("%s, %s/%s/%s", fecha[0], fecha[2], fecha[1], fecha[4]);
+			printf("%s",fecha);
 			return 0;
 		default:
 			return COMANDO_INVALIDO;
@@ -349,30 +359,30 @@ int load_data(char *element, struct element_description *description){
 
 	if((lstat(element, &fileStat)==0) && ((file=fopen(element,"r"))!= NULL)) {
 
-		strcpy((*description).name, element);
+		strcpy(description -> name, element);
 		if (S_ISLNK(fileStat.st_mode)) {
 			chdir(element);
-			strcat((*description).name," -> ");
-			strcat((*description).name, getcwd(fich, 1024));
+			strcat(description -> name," -> ");
+			strcat(description -> name, getcwd(fich, 1024));
 			chdir(current);
 		}
-		strcpy((*description).permisos, ConvierteModo2(fileStat.st_mode));
-		(*description).propietario = getpwuid(fileStat.st_uid)->pw_name;
-		(*description).grupo = getgrgid(fileStat.st_gid)->gr_name;
-		(*description).links = (long) fileStat.st_nlink;
-		(*description).nInodo = fileStat.st_ino;
+		strcpy(description -> permisos, ConvierteModo2(fileStat.st_mode));
+		description -> propietario = getpwuid(fileStat.st_uid) -> pw_name;
+		description -> grupo = getgrgid(fileStat.st_gid) -> gr_name;
+		description -> links = (long) fileStat.st_nlink;
+		description -> nInodo = fileStat.st_ino;
 		time_t t = fileStat.st_mtim.tv_sec;
 		tm = localtime(&t);
 
 		strftime(buf, sizeof(buf), "%b %d %H:%M", tm);
-		strcpy((*description).fecha, buf);
+		strcpy(description -> fecha, buf);
 
 		fseek(file, 0L, SEEK_END);
 		if (S_ISDIR(fileStat.st_mode) || S_ISLNK(fileStat.st_mode)) {
-			(*description).size = fileStat.st_blksize;;
+			description -> size = fileStat.st_blksize;;
 		}
 		else {
-			(*description).size = ftell(file);
+			description -> size = ftell(file);
 		}
 		fclose(file);
 			//printf("\t %s %d %d:%d ", tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min);
@@ -413,8 +423,8 @@ int cmd_query(container* c) {
 	int i;
 	struct element_description description;
 
-	for(i = 1; i<c->nargs; i++){
-		if (load_data(c->flags[i], &description)) {
+	for(i = 1; i < c -> nargs; i++){
+		if (load_data(c -> flags[i], &description)) {
 			print_element(description, 0);
 		}
 	}
@@ -436,7 +446,7 @@ int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int
 				nivel++;
 				chdir(elemento);
 				while ((ent = readdir(dir)) != NULL) {
-					if (strcmp(ent->d_name, ".")==0 && strcmp(ent->d_name, "..")==0) {
+					if (strcmp(ent->d_name, ".")!=0 && strcmp(ent->d_name, "..")!=0) {
 						lstat(ent->d_name, &path_stat);
 						if (!(!argH && (ent->d_name[0] == '.'))) {
 							fun_list_rec(ent->d_name, path_stat, nivel, argH, argR, argN);
@@ -468,7 +478,6 @@ int cmd_list(container* c){
 	int hCount=0;
 	int nivel;
 	struct stat path_stat;
-
 
 	nivel = 0;
 
@@ -723,7 +732,7 @@ int cmd_allocate (container *c) {
 							((tDato *) nodo.dato)->data_size = allocSize;
 							((tDato *) nodo.dato)->date = localtime(&t);
 
-							printf("Memoria de shget de clave %d asignada en %p\n", key, nodo.id);
+							printf("Memoria de shget de clave %d asignada en %p\n", (int)key, nodo.id);
 							return 0;
 						} else {
 							perror("Tamaño de memoria invalido");
@@ -775,7 +784,7 @@ void *deallocateAux(tList *list, tPosL pos, tNodo nodo, tType tipo){
 		default:
 			break;
 	}
-
+	return 0;
 }
 int compare(tNodo nodo, void* p, int num) {
 	switch (num) {
@@ -788,7 +797,7 @@ int compare(tNodo nodo, void* p, int num) {
 tPosL searchDealloc (tType type, auxDealloc aux, tList l) {
 	int i, b = 0;
 	i = first(l);
-	tNodo nodo;
+	tNodo nodo = {};
 
 	if (!isEmptyList(l)) {
 		while ((i != NIL) && !b) {
@@ -800,6 +809,7 @@ tPosL searchDealloc (tType type, auxDealloc aux, tList l) {
 			deallocateAux(&l, i, nodo, type);
 		} else printList(type, l);
 	}
+	return i;
 }
 /*
  * TODO Deallocate | lobera una de las direcciones de memorias reservadas en la lista, sin argumentos lista las direcciones
@@ -849,13 +859,13 @@ int cmd_deallocate (container* c){
  *TODO rmkey cl | Elimina la región de memoria compartida de llave cl. Simplemente es una llamada a shmctl(id, IPC RMID ...)
  */
 int cmd_rmkey (container *c){
-
+	return 0;
 }
 /*
  *TODO mem | Imprime la dirección de memoria de 3 funciones del programa, tres variables globales y tres variables locales
  */
 int cmd_mem (container *c){
-
+	return 0;
 }
 /*
  * TODO memdump addr | Enseña el contenido de 25 bytes empezando por addr
@@ -863,18 +873,18 @@ int cmd_mem (container *c){
  * Imprime 25 bytes por línea, podría producir segmentation fault
  */
 int cmd_memDump (container *c){
-
+	return 0;
 }
 /*
- *
+ *TODO aux rec
  */
 void auxRecursive (int n) {
 	char automatico[1024];
 	static char estatico[1024];
 
 	printf ("parametro n:%d en %p\n",n,&n);
-	printf ("array estatico en: %p \n",estatico);
-	printf ("array automatico en: %p\n",automatico);
+	printf ("array estatico en: %p \n",&estatico);
+	printf ("array automatico en: %p\n",&automatico);
 	n--;
 
 	if (n>0) auxRecursive(n);
@@ -895,7 +905,7 @@ int cmd_recursiveFunction (container *c){
  * TODO read fich addr cont | Lee cont bytes de fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
  */
 int cmd_read (container *c){
-
+	return 0;
 }
 
 /*
@@ -903,7 +913,7 @@ int cmd_read (container *c){
  * TODO Si ya existe, no se sobreescribe a menos que se le pase -o
  */
 int cmd_write (container *c){
-
+	return 0;
 }
 
 struct{
@@ -991,5 +1001,6 @@ int main() {
 		if(salir<0)printf("%s",ERROR_MESAGES[abs(salir)]);
 	}
 	free(entrada);
+	freeList(&c.lista);
 	return 0;
 }
