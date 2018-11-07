@@ -167,14 +167,6 @@ int cmd_pid(container *c) {
 	}
 }
 
-void time_util(char * fecha[]){
-	struct tm *t;
-	time_t s;
-	time(&s); //Guarda en s el tiempo en segundos desde 1/1/1970
-	t = localtime(&s); //Convierte time_t a tm
-	trocearCadena(asctime(t), fecha);
-}
-
 int cmd_hora (container *c){
 	struct tm *t;
 	char fecha[200];
@@ -182,7 +174,6 @@ int cmd_hora (container *c){
 	time(&s);
 	t = localtime(&s);
 	strftime(fecha, sizeof(fecha), "%H:%M", t);
-	//time_util(fecha);
 	switch (c->nargs) {
 		case 1 :
 			printf("%s", fecha);
@@ -199,7 +190,6 @@ int cmd_fecha (container *c) {
 	time(&s);
 	t = localtime(&s);
 	strftime(fecha, sizeof(fecha), "%d/%m/%Y", t);
-	//time_util(fecha);
 	switch (c->nargs) {
 		case 1:
 			printf("%s",fecha);
@@ -229,7 +219,25 @@ int cmd_chdir(container *c){
 	}
 }
 
+void freeList(tList *l){
+
+	tPosL pos = first(*l);
+	tNodo aux;
+
+	while(!isEmptyList(*l)){
+		if(pos != NIL){
+			aux = getItem(pos,*l);
+			free(aux.id);
+			free(aux.dato);
+			deleteAtPosition(pos,l);
+		}
+		pos = next(pos,*l);
+	}
+	printf(" Bye !");
+}
+
 int cmd_exit(container *c) {
+	freeList(&c->lista);
 	return 1;
 }
 
@@ -961,22 +969,6 @@ int procesarEntrada(char *cadena, container *c){
 	return 0;
 }
 
-void freeList(tList *l){
-
-	tPosL pos = first(*l);
-	tNodo aux;
-
-	while(!isEmptyList(*l)){
-		if(pos != NIL){
-			aux = getItem(pos,*l);
-			free(aux.id);
-			free(aux.dato);
-			deleteAtPosition(pos,l);
-		}
-		pos = next(pos,*l);
-	}
-	printf(" Bye !");
-}
 /*
  * DONE - Separar los comandos query y list en dos archivos query.c y list.c
  * DONE - Hacer que el programa pueda lidiar con caracteres tipo (*,?,...)
@@ -1001,6 +993,5 @@ int main() {
 		if(salir<0)printf("%s",ERROR_MESAGES[abs(salir)]);
 	}
 	free(entrada);
-	freeList(&c.lista);
 	return 0;
 }
