@@ -587,7 +587,7 @@ int cmd_mmap (char* arg[], tNodo* nodo) {
 	}
 
 	if ((nodo->id = MmapFichero(arg[2], protection, nodo)) == NULL) {
-		perror("cannot mmap file\n");
+		perror("cannot mmap file");
 		return 0;
 	}
 	else printf("block at address %p allocated (mmap)\n", nodo->id);
@@ -644,7 +644,7 @@ int Cmd_AllocCreateShared (char* arg[], tNodo* nodo) {
 	if (arg[3] != NULL) tam = (off_t) atol(arg[3]);
 
 	if ((p = ObtenerMemoriaShmget(k,tam, nodo)) == NULL) //Se pasa nodo para conseguir el tamaño en caso de -shared
-		perror ("Imposible obtener memoria shmget: \n");
+		perror ("Imposible obtener memoria shmget");
 	else {
 		printf("Memoria de shmeget de clave %d asignada en %p\n", k, p);
 		nodo->id = p;
@@ -700,7 +700,7 @@ int cmd_allocate (container* c) {
 				}
 				else {
 					freeNodo(&nodo);
-					perror("cannot malloc\n");
+					perror("cannot malloc");
 				}
 			}
 			else if (!strcmp(c->flags[1], "-mmap")) {
