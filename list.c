@@ -62,7 +62,7 @@ tPosL findItem (char *id, tList l) {
 		p = first(l);
 		while ((p != NIL) && !b) {
 			sprintf(aux1,"%p", l.Array[p].id);
-			if (!strcmp(aux1,id)) p = next(p, l);
+			if (strcmp(aux1,id)) p = next(p, l);
 			else b = 1;
 		}
 		return p;

@@ -5,7 +5,6 @@
 typedef struct {
 	void *id;
 	void *dato;
-	void *tipo;
 } tNodo;
 
 typedef  struct {
