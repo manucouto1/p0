@@ -1,25 +1,12 @@
-#include <stddef.h>
-#include <bits/types/time_t.h>
-#include <bits/types/struct_tm.h>
 
 #define MAX 4096
 #define NIL -1
 
-typedef void *tAddr;
-typedef enum { mallocc = 0, mmapp = 1, shared = 2} tType;
-
 typedef struct {
-	struct tm fecha;
-	tType tipo;
-	size_t size;
-	void* addr;
-	void* extra;
+	void *id;
+	void *dato;
+	void *tipo;
 } tNodo;
-
-typedef struct {
-	int fd;
-	char* fich;
-} mmap_info;
 
 typedef  struct {
 	int key;
@@ -39,7 +26,7 @@ tPosL last (tList list);
 tPosL next (tPosL pos, tList list);
 tPosL previous (tPosL pos, tList list);
 int insertItem (tNodo item, tPosL pos, tList* l);
-tPosL findItem(char* addr, tList list);
+tPosL findItem(char *id, tList list);
 void deleteAtPosition (tPosL pos, tList* list);
 void updateItem(tList* list, tPosL pos, tNodo nodo);
 tNodo getItem (tPosL pos, tList list);
