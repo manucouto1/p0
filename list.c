@@ -53,16 +53,16 @@ int insertItem (tNodo item, tPosL pos, tList* l) {
 	}
 }
 
-tPosL findItem (void *id, tList l) {
+tPosL findItem (char *id, tList l) {
 	tPosL p;
 	int b = 0;
-	char addrAux [50];
+	char aux1[50];
 
 	if (!isEmptyList(l)) {
 		p = first(l);
 		while ((p != NIL) && !b) {
-			sprintf(addrAux,"%p", l.Array[p].id);
-			if (strcmp(id, addrAux)) p = next(p, l);
+			sprintf(aux1,"%p", l.Array[p].id);
+			if (!strcmp(aux1,id)) p = next(p, l);
 			else b = 1;
 		}
 		return p;
@@ -75,7 +75,7 @@ tPosL findItem (void *id, tList l) {
 void deleteAtPosition (tPosL p, tList *l) {
 	tPosL i;
 
-	for (i = p; i <= (l->fin - 1); i++) {
+	for (i = p; i <= (l->fin); i++) {
 		l->Array[i] = l->Array[i + 1];
 	}
 	l->fin = l->fin - 1;
