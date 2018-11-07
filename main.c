@@ -605,14 +605,11 @@ void *MmapFichero (char *fichero, int protection, tNodo *nodo){
 		free(((tDato*)nodo->dato)->extra);
 		return NULL;
 	}
-
 	nodo->id = p;
-
 	// General data
 	((tDato*)nodo->dato)->tipo = mmapp;
 	((tDato*)nodo->dato)->data_size = (int)s.st_size;
 	((tDato*)nodo->dato)->date = localtime(&t);
-
 	// Especific map data
 	strcpy(((tMap*)((tDato*)nodo->dato)->extra)->fichero,fichero);
 	((tMap*)((tDato*)nodo->dato)->extra)->proteccion = protection;
@@ -623,15 +620,13 @@ void *MmapFichero (char *fichero, int protection, tNodo *nodo){
 void *ObtenerMemoriaMalloc(int allocSize,tNodo *nodo) {
 	time_t s;
 	time(&s);
-
+	// Inicializando
 	nodo -> dato = malloc(sizeof(tDato));
 	nodo -> id = malloc((size_t)allocSize);
-
+	// General data
 	((tDato*) nodo -> dato) -> tipo = mallocc;
 	((tDato*) nodo -> dato) -> data_size = allocSize;
 	((tDato*) nodo -> dato) -> date = localtime(&s);
-
-
 
 	return (*nodo).id;
 }
@@ -645,6 +640,7 @@ void *ObtenerMemoriaMalloc(int allocSize,tNodo *nodo) {
  * TODO -shared [cl]
  */
 int cmd_allocate (container *c) {
+	char *aux;
 
 	switch (c->nargs) {
 		case 1:
@@ -661,8 +657,8 @@ int cmd_allocate (container *c) {
 
 			if(!strcmp(c->flags[1],"-malloc")) {
 				if(c->flags[2]!= NULL){
-					int allocSize = atoi(c->flags[2]);
-					if(allocSize > 0){
+					int allocSize ;
+					if((allocSize = (int)strtol(c->flags[2],&aux,10)) > 0){
 						tNodo nodo;
 						if((ObtenerMemoriaMalloc(allocSize, &nodo))==NULL){
 							perror("Imposible reservar memoria");
@@ -706,37 +702,36 @@ int cmd_allocate (container *c) {
 				}
 
 			} if(!strcmp(c->flags[1],"-createshared")){
-				key_t key;
+				key_t key = 0;
 				off_t tam = 0;
 				time_t t;
 				time(&t);
 				tNodo nodo;
 
-				tam = (off_t) atoi(c->flags[2]);
+				if (c->flags[2]!=NULL) {
 
-				if (c->flags[2]!=NULL){
-					tam=(off_t) atoll(c->flags[2]);
-				}
-				if((ObtenerMemoriaShmget(key,tam))==NULL){
-					perror("Imposible obtener memoria Shmget");
-					return ERROR_IPC; //CAMBIAR TIPO ERROR
-				} else {
-					int allocSize;
-					if((allocSize= atoi(c->flags[2])>0)){
-
-						nodo.dato = malloc(sizeof(tDato));
-						nodo.id= malloc(allocSize);
-
-						((tDato*)nodo.dato)->data_size = allocSize;
-						((tDato*)nodo.dato)->date = localtime(t);
-
-						printf("Memoria de shget de clave %d asignada en %p\n", key, nodo.id);
-						return  0;
+					tam = (off_t) strtol(c->flags[2], &aux,10);
+					if ((ObtenerMemoriaShmget(key, (size_t)tam)) == NULL) {
+						perror("Imposible obtener memoria Shmget");
+						return ERROR_IPC; //CAMBIAR TIPO ERROR
 					} else {
-						perror("Tamaño de memoria invalido");
-						return ERROR_IPC;
-					}
+						int allocSize;
+						if ((allocSize = (int)strtol(c->flags[2],&aux,10) > 0)) {
 
+							nodo.dato = malloc(sizeof(tDato));
+							nodo.id = malloc((size_t)allocSize);
+
+							((tDato *) nodo.dato)->data_size = allocSize;
+							((tDato *) nodo.dato)->date = localtime(&t);
+
+							printf("Memoria de shget de clave %d asignada en %p\n", key, nodo.id);
+							return 0;
+						} else {
+							perror("Tamaño de memoria invalido");
+							return ERROR_IPC;
+						}
+
+					}
 				}
 
 			} else {
