@@ -16,6 +16,7 @@
 #include <sys/mman.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <ctype.h>
 
 
 #define COMANDO_INVALIDO -1
@@ -912,12 +913,41 @@ int cmd_mem (container* c){
  * Imprime 25 bytes por línea, podría producir segmentation fault
  */
 int cmd_memDump (container* c){
-	int i;
+	int cont, j;
+	uintptr_t valor;
+	uint32_t *puntero;
+	char aux[25];
 
 	switch (c->nargs) {
 		case 2:
-			break;
+			c->flags[2] = "25";
 		case 3:
+			valor = strtoul(c->flags[1], NULL, 0);
+			cont = (int) strtol(c->flags[2], NULL, 10);
+			while (cont > 0) {
+				puntero = (void *) valor;
+				if (cont >= 25)
+					memcpy(aux, puntero, 25);
+				else
+					memcpy(aux, puntero, cont);
+
+				for (j = 0; (j < 25) && (j < cont); j++) {
+					if (isprint(aux[j]))
+						printf("%2c ", aux[j]);
+					else
+						printf("   ");
+				}
+				printf("\n");
+				for (j = 0; (j < 25) && (j < cont); j++) {
+					if (isprint(aux[j]))
+						printf("%x ", aux[j]);
+					else
+						printf("%x ", ' ');
+				}
+				printf("\n");
+				valor = valor + 25;
+				cont = cont - 25;
+			}
 			break;
 		default:
 			return COMANDO_INVALIDO;
