@@ -45,7 +45,7 @@ typedef struct {
 
 typedef struct {
 	int proteccion;
-	char *fichero;
+	char fichero[200];
 }tMap;
 
 typedef struct {
