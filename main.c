@@ -69,6 +69,10 @@ typedef struct {
 	char file[256];
 } auxDealloc;
 
+int global1;
+int global2;
+int global3;
+
 int trocearCadena ( char * cadena, char * trozos[]){
 	int  i = 1;
 
@@ -860,14 +864,47 @@ int cmd_deallocate (container* c){
 /*
  *TODO rmkey cl | Elimina la región de memoria compartida de llave cl. Simplemente es una llamada a shmctl(id, IPC RMID ...)
  */
-int cmd_rmkey (container* c){
+int cmd_rmkey (container* c) {
+	key_t clave;
+	int id;
+	if (c->nargs == 2) {
+		char *key = c->flags[1];
 
+		if (key == NULL || (clave = (key_t) strtoul(key, NULL, 10)) == IPC_PRIVATE) {
+			printf("rmkey clave_valida\n");
+		}
+		if ((id = shmget(clave, 0, 0666)) == -1) {
+			perror("shmget: imposible obtener memoria compartida");
+			return 0;
+		}
+		if (shmctl(id, IPC_RMID, NULL) == -1) {
+			perror("shmctl: imposible eliminar memoria compartida");
+			return 0;
+		}
+
+		return 0;
+	}
+	else return COMANDO_INVALIDO;
 }
 /*
  *TODO mem | Imprime la dirección de memoria de 3 funciones del programa, tres variables globales y tres variables locales
  */
 int cmd_mem (container* c){
+	int local1;
+	int local2;
+	int local3;
 
+	if (c->nargs == 1) {
+		printf("Direcciones de memoria de tres funciones del programa:\n");
+		printf("cmd_allocate -> %p\ncmd_deallocate -> %p\ncmd_autores -> %p\n\n", &cmd_allocate, &cmd_deallocate,
+			   &cmd_autores);
+		printf("Direcciones de memoria de variables globales:\n");
+		printf("global1 -> %p\nglobal2 -> %p\nglobal3 -> %p\n\n", &global1, &global2, &global3);
+		printf("Direcciones de memoria de variables locales:\n");
+		printf("local1 -> %p\nlocal2 -> %p\nlocal3 -> %p\n", &local1, &local2, &local3);
+		return 0;
+	}
+	else return COMANDO_INVALIDO;
 }
 /*
  * TODO memdump addr | Enseña el contenido de 25 bytes empezando por addr
@@ -875,7 +912,18 @@ int cmd_mem (container* c){
  * Imprime 25 bytes por línea, podría producir segmentation fault
  */
 int cmd_memDump (container* c){
+	int i;
 
+	switch (c->nargs) {
+		case 2:
+			break;
+		case 3:
+			break;
+		default:
+			return COMANDO_INVALIDO;
+	}
+
+	return 0;
 }
 /*
  *
