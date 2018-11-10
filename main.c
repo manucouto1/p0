@@ -1014,6 +1014,10 @@ ssize_t LeerFichero (char *fich, void *p, ssize_t n) { /*n=-1 indica que se lea 
 	return nleidos;
 }
 
+/*
+ * TODO read fich addr | Lee fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
+ * TODO read fich addr cont | Lee cont bytes de fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
+ */
 int cmd_read (container *c){
 
 	tNodo nodo;
@@ -1046,46 +1050,6 @@ int cmd_read (container *c){
 		}
 	} else
 		return COMANDO_INVALIDO;
-}
-
-/*
- * TODO read fich addr | Lee fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
- * TODO read fich addr cont | Lee cont bytes de fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
- */
-int cmd_read_2 (container *c){
-	int fd;
-	size_t cont;
-	uintptr_t valor;
-	uint32_t *puntero;
-	FILE *fichero;
-	struct stat fileStat;
-
-	switch (c->nargs) {
-		case 3:
-		case 4:
-			valor = strtoul(c->flags[2], NULL, 0);
-			puntero = (void *) valor;
-			if ((fichero = fopen(c->flags[1], "r")) != NULL) {
-				fd = fileno(fichero);
-				fstat(fd, &fileStat);
-				if (c->nargs == 3)
-					cont = (size_t) fileStat.st_size;
-				else
-					cont = strtoul(c->flags[3], NULL, 10);
-				if (read(fd, puntero, cont) != -1) {
-					printf("Read %lu bytes from file %s into %p\n", cont, c->flags[1], puntero);
-				}
-				else
-					printf("cannot read %s: %s\n", c->flags[1], strerror(errno));
-				fclose(fichero);
-			}
-			else
-				printf("cannot read %s: %s\n", c->flags[1], strerror(errno));
-			break;
-		default:
-			return COMANDO_INVALIDO;
-	}
-	return 0;
 }
 
 /*
