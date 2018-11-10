@@ -1015,8 +1015,8 @@ ssize_t LeerFichero (char *fich, void *p, ssize_t n) { /*n=-1 indica que se lea 
 }
 
 /*
- * TODO read fich addr | Lee fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
- * TODO read fich addr cont | Lee cont bytes de fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
+ * DONE read fich addr | Lee fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
+ * DONE read fich addr cont | Lee cont bytes de fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
  */
 int cmd_read (container *c){
 
@@ -1024,24 +1024,14 @@ int cmd_read (container *c){
 	tPosL pos;
 	int offset = -1;
 	long cont = 0;
-
-	// Opcion 2
-	uintptr_t valor;
-	uint32_t *puntero;
-	//
-
+	// Creo que es mejor usar una direccion que hayamos guardado en la lista antes con -malloc
 	if(c->nargs == 4 || c->nargs == 3){
-
-		// Entinedo que esto transforma el estring en un puntero
-		valor = strtoul(c->flags[2], NULL, 0);
-		puntero = (void *) valor;
-
-		// No se si tenemos que tener el puntero guardado en la lista para guardar ahí
 		if((pos = findItem(c->flags[2],c->lista)) >= 0) {
 			nodo = getItem(pos, c->lista);
 			if(c->flags[3])
 				offset = (int) strtol(c->flags[3], NULL, 10);
 			cont = LeerFichero(c->flags[1], nodo.id, offset);
+
 			printf("Read %lu bytes from file %s into %p\n", cont, c->flags[1], nodo.id);
 			return 0;
 		} else {
@@ -1052,43 +1042,52 @@ int cmd_read (container *c){
 		return COMANDO_INVALIDO;
 }
 
+int EscribirFichero (void *puntero, char *fich, size_t cont) {
+	FILE *fichero;
+	int fd;
+
+	if ((fichero = fopen(fich, "w+")) != NULL) {
+		fd = fileno(fichero);
+		if (write(fd, puntero, cont) != -1) {
+			printf("Written %lu bytes from memory address %p into file %s", cont, puntero, fich);
+		} else
+			printf("cannot write %s: %s\n", fich, strerror(errno));
+		fclose(fichero);
+	} else
+		printf("cannot write %s: %s\n", fich, strerror(errno));
+}
+
 /*
  * TODO write file addr cont [-o] | Escribe cont bytes de addr en file. Si file no existe se crea.
  * TODO Si ya existe, no se sobreescribe a menos que se le pase -o
  */
 int cmd_write (container *c){
-	int fd;
-	size_t cont;
-	uintptr_t valor;
-	uint32_t *puntero;
-	FILE *fichero;
+	tNodo nodo;
+	tPosL pos;
+	size_t cont = 0;
 
-	switch (c->nargs) {
-		case 4:
-		case 5:
-			if (access(c->flags[1], F_OK) || (c->flags[4] != NULL && !strcmp(c->flags[4],"-o"))) {
-				valor = strtoul(c->flags[2], NULL, 0);
-				puntero = (void *) valor;
-				cont = strtoul(c->flags[3], NULL, 10);
-				if ((fichero = fopen(c->flags[1], "w+")) != NULL) {
-					fd = fileno(fichero);
-					if (write(fd, puntero, cont) != -1) {
-						printf("Written %lu bytes from memory address %p into file %s", cont, puntero, c->flags[1]);
-					} else
-						printf("cannot write %s: %s\n", c->flags[1], strerror(errno));
-					fclose(fichero);
-				} else
-					printf("cannot write %s: %s\n", c->flags[1], strerror(errno));
+	int fileExists = access(c->flags[1], F_OK);
+
+	if(c->nargs == 4 && fileExists == -1){
+		if((pos = findItem(c->flags[2], c->lista)) >=0){
+			nodo = getItem(pos, c->lista);
+			EscribirFichero(nodo.id,c->flags[1],cont);
+		} else {
+			perror("error: dirección no encontrada");
+		}
+	} else if (c -> nargs == 5) {
+		if(!strcmp(c->flags[4],"-o") && fileExists != -1){
+			if((pos = findItem(c->flags[2], c->lista)) >=0){
+				nodo = getItem(pos, c->lista);
+				EscribirFichero(nodo.id,c->flags[1],cont);
+			} else {
+				perror("error: dirección no encontrada");
 			}
-			else {
-				if (c->nargs == 4)
-					printf("File %s already exists, to overwrite it use -o\n", c->flags[1]);
-				else
-					return COMANDO_INVALIDO;
-			}
-			break;
-		default:
-			return COMANDO_INVALIDO;
+		} else {
+			perror("error: el fichero ya existe, use la opción -o");
+		}
+	} else {
+		return COMANDO_INVALIDO;
 	}
 	return 0;
 }
