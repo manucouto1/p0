@@ -40,7 +40,7 @@ typedef struct {
 	size_t size;
 	tType tipo;
 	void *extra;
-	char date[200];
+	char date[256];
 }tDato;
 
 typedef struct {
@@ -619,7 +619,6 @@ void *Cmd_Mmap (char *arg[], tNodo *nodo){
 void *ObtenerMemoriaMalloc(char *flags,tNodo *nodo) {
 	// Inicializando
 	size_t allocSize = (unsigned long) strtol(flags,NULL,10);
-	nodo -> dato = malloc(sizeof(tDato));
 	nodo -> id = malloc(allocSize);
 	// General data
 	((tDato*) nodo -> dato) -> tipo = mallocc;
@@ -675,15 +674,13 @@ void createNodo (tNodo* nodo, tType type) {
 	time_t t;
 	time(&t);
 	struct tm *s;
-	char fecha[200];
 
 	nodo->dato = malloc(sizeof(tDato));
 	((tDato *)nodo->dato)->extra = malloc(sizeof(void *));
 	((tDato *)nodo->dato)->tipo = type;
 	// Fecha
 	s = localtime(&t);
-	strftime(fecha, sizeof(fecha), "%c", s);
-	strcpy(((tDato *)nodo->dato)->date,fecha);
+	strftime(((tDato *)nodo->dato)->date, (256 * sizeof(char)), "%c", s);
 }
 
 void freeNodo (tNodo* nodo) {
@@ -718,7 +715,8 @@ int cmd_allocate (container* c) {
 					if (!insertItem(nodo, NIL, &c->lista))
 						return ERROR_INSERT;
 					else
-						printf("block at address %p allocated (malloc)", nodo.id);
+						printf("block at address %p allocated (malloc)");
+
 				} else {
 					freeNodo(&nodo);
 					perror("cannot malloc");
