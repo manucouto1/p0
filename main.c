@@ -12,12 +12,12 @@
 #include <string.h>
 #include <inttypes.h>
 #include <fcntl.h>
-#include "list.h"
-#include <sys/mman.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <ctype.h>
+#include <sys/mman.h>
 
+#include "list.h"
 
 #define COMANDO_INVALIDO -1
 #define ERROR_CREATING_FILE -2
@@ -50,7 +50,7 @@ typedef struct {
 }tMap;
 
 typedef struct {
-	int key;
+	key_t key;
 }tShared;
 
 struct element_description{
@@ -107,7 +107,6 @@ char TipoFichero (mode_t m)
 	}
 }
 
-
 char * ConvierteModo2 (mode_t m)
 {
 	static char permisos[12];
@@ -129,7 +128,7 @@ char * ConvierteModo2 (mode_t m)
 }
 
 
-int cmd_autores(container* c){
+int cmd_autores(container *c){
 	int i = 1;
 
 	char *autores[2] = {"Manuel Couto Pintos","Victor Escudero Gonzalez"};
@@ -154,10 +153,9 @@ int cmd_autores(container* c){
 	}
 
 	return 0;
-
 }
 
-int cmd_pid(container* c) {
+int cmd_pid(container *c) {
 	switch (c->nargs) {
 		case 1:
 			printf("Process ID: %d", getpid());
@@ -175,39 +173,39 @@ int cmd_pid(container* c) {
 	}
 }
 
-void time_util(char * fecha[]){
+int cmd_hora (container *c){
 	struct tm *t;
+	char fecha[200];
 	time_t s;
-	time(&s); //Guarda en s el tiempo en segundos desde 1/1/1970
-	t = localtime(&s); //Convierte time_t a tm
-	trocearCadena(asctime(t), fecha);
-}
-
-int cmd_hora (container* c){
-	char * fecha[100];
-	time_util(fecha);
+	time(&s);
+	t = localtime(&s);
+	strftime(fecha, sizeof(fecha), "%H:%M", t);
 	switch (c->nargs) {
 		case 1 :
-			printf("%s", fecha[3]);
+			printf("%s", fecha);
 			return 0;
 		default:
 			return COMANDO_INVALIDO;
 	}
 }
 
-int cmd_fecha (container* c) {
-	char * fecha[100];
-	time_util(fecha);
+int cmd_fecha (container *c) {
+	struct tm *t;
+	char fecha[200];
+	time_t s;
+	time(&s);
+	t = localtime(&s);
+	strftime(fecha, sizeof(fecha), "%d/%m/%Y", t);
 	switch (c->nargs) {
 		case 1:
-			printf("%s, %s/%s/%s", fecha[0], fecha[2], fecha[1], fecha[4]);
+			printf("%s",fecha);
 			return 0;
 		default:
 			return COMANDO_INVALIDO;
 	}
 }
 
-int cmd_chdir(container* c){
+int cmd_chdir(container *c){
 	char dir[1024];
 
 	switch (c->nargs) {
@@ -227,11 +225,29 @@ int cmd_chdir(container* c){
 	}
 }
 
-int cmd_exit(container* c) {
+void freeList(tList *l){
+
+	tPosL pos = first(*l);
+	tNodo aux;
+
+	while(!isEmptyList(*l)){
+		if(pos != NIL){
+			aux = getItem(pos,*l);
+			free(aux.id);
+			free(aux.dato);
+			deleteAtPosition(pos,l);
+		}
+		pos = next(pos,*l);
+	}
+	printf(" Bye !");
+}
+
+int cmd_exit(container *c) {
+	freeList(&c->lista);
 	return 1;
 }
 
-int cmd_create(container* c) {
+int cmd_create(container *c) {
 	int fd;
 
 	switch (c->nargs) {
@@ -286,7 +302,7 @@ int borrar_rec(char *elemento, struct stat path_stat){
 		if ((dir = opendir(elemento)) != NULL) {
 			chdir(elemento);
 			while ((ent = readdir(dir)) !=NULL) {
-				if (strcmp(ent->d_name,".") && strcmp(ent->d_name,"..")) {
+				if (strcmp(ent->d_name,".")!=0 && strcmp(ent->d_name,"..")!=0) {
 					stat(ent->d_name, &path_stat);
 					borrar_rec(ent->d_name, path_stat);
 				}
@@ -302,14 +318,14 @@ int borrar_rec(char *elemento, struct stat path_stat){
 }
 /* - end DELETE util functions */
 
-int cmd_delete(container* c) {
-	/*
-	 * DONE - Eliminar un fichero o un directorio
-	 * DONE - Si no tiene flag el directorio tiene que estar vacio para ser borrado
-	 * DONE - Si tiene un flag -r borrar el contenido y el directorio
-	 * DONE - Si no hay argumentos no se hace nada
-	 * DONE - Si no se puede eliminar Hay que informar al usuario con un mensaje
-	 */
+/*
+ * DONE - Eliminar un fichero o un directorio
+ * DONE - Si no tiene flag el directorio tiene que estar vacio para ser borrado
+ * DONE - Si tiene un flag -r borrar el contenido y el directorio
+ * DONE - Si no hay argumentos no se hace nada
+ * DONE - Si no se puede eliminar Hay que informar al usuario con un mensaje
+ */
+int cmd_delete(container *c) {
 
 	struct stat path_stat;
 
@@ -342,7 +358,6 @@ int cmd_delete(container* c) {
 		default:
 			return COMANDO_INVALIDO;
 	}
-
 }
 
 /* - LIST/QUERY util functions */
@@ -358,30 +373,30 @@ int load_data(char *element, struct element_description *description){
 
 	if((lstat(element, &fileStat)==0) && ((file=fopen(element,"r"))!= NULL)) {
 
-		strcpy((*description).name, element);
+		strcpy(description->name, element);
 		if (S_ISLNK(fileStat.st_mode)) {
 			chdir(element);
-			strcat((*description).name," -> ");
-			strcat((*description).name, getcwd(fich, 1024));
+			strcat(description->name," -> ");
+			strcat(description->name, getcwd(fich, 1024));
 			chdir(current);
 		}
-		strcpy((*description).permisos, ConvierteModo2(fileStat.st_mode));
-		(*description).propietario = getpwuid(fileStat.st_uid)->pw_name;
-		(*description).grupo = getgrgid(fileStat.st_gid)->gr_name;
-		(*description).links = (long) fileStat.st_nlink;
-		(*description).nInodo = fileStat.st_ino;
+		strcpy(description->permisos, ConvierteModo2(fileStat.st_mode));
+		description->propietario = getpwuid(fileStat.st_uid) -> pw_name;
+		description->grupo = getgrgid(fileStat.st_gid) -> gr_name;
+		description->links = (long) fileStat.st_nlink;
+		description->nInodo = fileStat.st_ino;
 		time_t t = fileStat.st_mtim.tv_sec;
 		tm = localtime(&t);
 
 		strftime(buf, sizeof(buf), "%b %d %H:%M", tm);
-		strcpy((*description).fecha, buf);
+		strcpy(description->fecha, buf);
 
 		fseek(file, 0L, SEEK_END);
 		if (S_ISDIR(fileStat.st_mode) || S_ISLNK(fileStat.st_mode)) {
-			(*description).size = fileStat.st_blksize;;
+			description->size = fileStat.st_blksize;;
 		}
 		else {
-			(*description).size = ftell(file);
+			description->size = ftell(file);
 		}
 		fclose(file);
 			//printf("\t %s %d %d:%d ", tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min);
@@ -411,18 +426,18 @@ void print_element(struct element_description elements_description, int argN){
 	}
 }
 
+/*
+ * DONE - Devuelve informacion de los archivos/directorios pasados como argumentos
+ * DONE - Produce una linea por arch/dir pasado como argumento
+ * DONE - mismo formato que ls -li resolviendo links simbolicos si es necesario
+ * DONE - equivalente a ls -li para archivos y que ls -lid para directorios
+ */
 int cmd_query(container* c) {
-	/*
-	 * DONE - Devuelve informacion de los archivos/directorios pasados como argumentos
-	 * DONE - Produce una linea por arch/dir pasado como argumento
-	 * DONE - mismo formato que ls -li resolviendo links simbolicos si es necesario
-	 * DONE - equivalente a ls -li para archivos y que ls -lid para directorios
-	 */
 
 	int i;
 	struct element_description description;
 
-	for(i = 1; i<c->nargs; i++){
+	for(i = 1; i < c->nargs; i++){
 		if (load_data(c->flags[i], &description)) {
 			print_element(description, 0);
 		}
@@ -431,6 +446,9 @@ int cmd_query(container* c) {
  	return 0;
 }
 
+/*
+ * TODO modificar la función para que concatene el path de cada nivel en un string en vez de cambiar el directorio de trabajo
+ */
 int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int argR, int argN){
 
 	DIR *dir;
@@ -445,7 +463,7 @@ int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int
 				nivel++;
 				chdir(elemento);
 				while ((ent = readdir(dir)) != NULL) {
-					if (strcmp(ent->d_name, ".") && strcmp(ent->d_name, "..")) {
+					if (strcmp(ent->d_name, ".")!=0 && strcmp(ent->d_name, "..")!=0) {
 						lstat(ent->d_name, &path_stat);
 						if (!(!argH && (ent->d_name[0] == '.'))) {
 							fun_list_rec(ent->d_name, path_stat, nivel, argH, argR, argN);
@@ -456,7 +474,7 @@ int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int
 				if (!strcmp(elemento, "..")) {
 					chdir(current);
 				}
-				else if (strcmp(elemento, ".")) chdir("..");
+				else if (strcmp(elemento, ".")!=0) chdir("..");
 			}
 		}
 	}
@@ -478,7 +496,6 @@ int cmd_list(container* c){
 	int nivel;
 	struct stat path_stat;
 
-
 	nivel = 0;
 
 	while(i < c->nargs && (c->flags[i][0] == '-')){
@@ -499,15 +516,14 @@ int cmd_list(container* c){
 
 	if((nCount <= 1)&&(rCount <= 1)&& (hCount <= 1)){ // si solo hay flags y no hay argumento Error comando invalido
 		//
-
 		if(c->nargs!=aux){
 			// Si se pasan argumentos
 			for(aux = aux; aux < c->nargs; aux++){
 				if (!lstat(c->flags[aux], &path_stat)) {
 					fun_list_rec(c->flags[aux], path_stat, nivel, hCount, rCount, nCount);
-				}
-				else {
+				} else {
 					printf("cannot access %s: %s\n", c->flags[aux], strerror(errno));
+					return ERROR_LISTING;;
 				}
 			}
 		} else {
@@ -559,21 +575,19 @@ void printList(tType type, tList l) {
 	}
 }
 
-void* MmapFichero (char *fichero, int protection, tNodo* nodo) {
-	int df, map = MAP_PRIVATE, modo = O_RDONLY;
+void *MmapFichero (char *fichero, int protection, tNodo *nodo){
+	int df, map=MAP_PRIVATE, modo=O_RDONLY;
 	struct stat s;
 	void *p;
 
 	if(protection&PROT_WRITE) modo=O_RDWR;
-	if(stat(fichero,&s)==-1 || (df=open(fichero,modo))==-1){
+	if(stat(fichero,&s)==-1 || (df=open(fichero,modo))==-1)
 		return NULL;
-	}
-	if((p=mmap (NULL, (size_t) s.st_size, protection, map, df, 0)) == MAP_FAILED){
+	if((p=mmap (NULL, (size_t) s.st_size, protection, map, df, 0)) == MAP_FAILED)
 		return NULL;
-	}
 	// General data
-	((tDato *)nodo->dato)->size =(unsigned long) s.st_size;
 	nodo->id = p;
+	((tDato*)nodo->dato)->size = (unsigned long) s.st_size;
 	// Especific map data
 	strcpy(((tMap *)((tDato *)nodo->dato)->extra)->fichero,fichero);
 	((tMap *)((tDato *)nodo->dato)->extra)->fd = df;
@@ -592,10 +606,10 @@ int cmd_mmap (char* arg[], tNodo* nodo) {
 	}
 
 	if ((nodo->id = MmapFichero(arg[2], protection, nodo)) == NULL) {
-		perror("cannot mmap file");
+		perror("Imposible mapear fichero");
 		return 0;
 	}
-	else printf("block at address %p allocated (mmap)\n", nodo->id);
+	else printf("fichero %s mapeado en %p\n", arg[2], nodo->id);
 	return 1;
 }
 
@@ -638,25 +652,22 @@ void * ObtenerMemoriaShmget (key_t clave, off_t tam, tNodo* nodo) {
 	((tDato *)nodo->dato)->size = s.shm_segsz;
 	return (p);
 }
-
-int Cmd_AllocCreateShared (char* arg[], tNodo* nodo) {
+int AllocCreateShared (char* arg[], tNodo *nodo) {
 	key_t k;
 	off_t tam = 0;
-	void* p;
+	// El parametro NULL es para pasar un string que devuelve un codigo de error
+	// para el tratamiento de errores
+	k = (key_t) strtol(arg[2],NULL,10);
 
-	k = (key_t) atoi(arg[2]);
+	if (arg[3] != NULL) tam = (off_t) strtol(arg[3],NULL,10);
 
-	if (arg[3] != NULL) tam = (off_t) atol(arg[3]);
-
-	if ((p = ObtenerMemoriaShmget(k,tam, nodo)) == NULL) //Se pasa nodo para conseguir el tamaño en caso de -shared
+	if ((nodo->id = ObtenerMemoriaShmget(k,tam, nodo)) == NULL) //Se pasa nodo para conseguir el tamaño en caso de -shared
 		perror ("Imposible obtener memoria shmget");
 	else {
-		printf("Memoria de shmeget de clave %d asignada en %p\n", k, p);
-		nodo->id = p;
-		((shared_info* ) ((tDato*)nodo->dato)->extra)->key = k;
+		printf("Memoria de shmeget de clave %d asignada en %p\n", k, nodo->id);
+		((tShared* ) ((tDato*)nodo->dato)->extra)->key = k;
 		return 1;
 	}
-
 	return 0;
 }
 
@@ -665,20 +676,19 @@ void createNodo (tNodo* nodo, tType type) {
 	time(&t);
 	nodo->dato = malloc(sizeof(tDato));
 	((tDato *)nodo->dato)->extra = malloc(sizeof(void *));
-
 	((tDato *)nodo->dato)->tipo = type;
 	((tDato *)nodo->dato)->date = *localtime(&t);
 }
 
 void freeNodo (tNodo* nodo) {
-	free(((tDato *)nodo->dato)->extra);
-	free(nodo->dato);
+	if(((tDato*)nodo->dato)->extra != NULL )
+		free((tType*)((tDato*)nodo->dato)->extra);
+	free((tDato*)nodo->dato);
 }
-
 /*
- * TODO Allocate | reserva memoria y la guarda en la lista, si no se le pasan argumentos muestra los elementos de la lista
- * TODO -malloc [tam] | se le indica el tamaño devuelve la direccion de memoria, sin argumentos lista elementos
- * TODO -mmap fich [perm]
+ * DONE Allocate | reserva memoria y la guarda en la lista, si no se le pasan argumentos muestra los elementos de la lista
+ * DONE -malloc [tam] | se le indica el tamaño devuelve la direccion de memoria, sin argumentos lista elementos
+ * DONE -mmap fich [perm]
  * TODO -createshared [cl] [tam]
  * TODO -shared [cl]
  */
@@ -688,20 +698,21 @@ int cmd_allocate (container* c) {
 	switch (c->nargs) {
 		case 1:
 			printList(-1, c->lista);
-			break;
+			return 0;
 		case 2:
 			if (!strcmp(c->flags[1], "-malloc")) printList(mallocc, c->lista);
 			else if (!strcmp(c->flags[1], "-shared") || !strcmp(c->flags[1], "-createshared")) printList(shared, c->lista);
 			else if (!strcmp(c->flags[1], "-mmap")) printList(mmapp, c->lista);
 			else return COMANDO_INVALIDO;
-			break;
+			return 0;
 		case 3:
 			if(!strcmp(c->flags[1],"-malloc")) {
 				createNodo(&nodo, mallocc);
-				//cmd_malloc;
 				if (ObtenerMemoriaMalloc(c->flags, &nodo) != NULL) {
-					if (!insertItem(nodo, NIL, &c->lista)) return ERROR_INSERT;
-					else printf("block at address %p allocated (malloc)\n", nodo.id);
+					if (!insertItem(nodo, NIL, &c->lista))
+						return ERROR_INSERT;
+					else
+						printf("block at address %p allocated (malloc)\n", nodo.id);
 				}
 				else {
 					freeNodo(&nodo);
@@ -717,14 +728,14 @@ int cmd_allocate (container* c) {
 			}
 			else if (!strcmp(c->flags[1], "-shared")) {
 				createNodo(&nodo, shared);
-				//cmd_shared;
-				if (Cmd_AllocCreateShared(c->flags, &nodo)) {
-					if (!insertItem(nodo, NIL, &c->lista)) return ERROR_INSERT;
+				if (AllocCreateShared(c->flags, &nodo)) {
+					if (!insertItem(nodo, NIL, &c->lista))
+						return ERROR_INSERT;
 				}
 				else freeNodo(&nodo);
 			}
 			else return COMANDO_INVALIDO;
-			break;
+			return 0;
 		case 4:
 			if (!strcmp(c->flags[1], "-mmap")) {
 				createNodo(&nodo, mmapp);
@@ -735,19 +746,16 @@ int cmd_allocate (container* c) {
 			}
 			else if (!strcmp(c->flags[1], "-createshared")) {
 				createNodo(&nodo, shared);
-				//cmd_shared;
-				if (Cmd_AllocCreateShared(c->flags, &nodo)) {
+				if (AllocCreateShared(c->flags, &nodo)) {
 					if (!insertItem(nodo, NIL, &c->lista)) return ERROR_INSERT;
 				}
 				else freeNodo(&nodo);
 			}
 			else return COMANDO_INVALIDO;
-			break;
+			return 0;
 		default:
 			return COMANDO_INVALIDO;
 	}
-
-	return 0;
 }
 
 void deallocateAux (tList* l, tNodo nodo, tPosL pos, tType tipo) {
@@ -788,9 +796,9 @@ void deallocateAux (tList* l, tNodo nodo, tPosL pos, tType tipo) {
 
 int compare(tNodo nodo, void* p, tType type) {
 	switch (type) {
-		case mallocc: return ((tDato*)nodo.dato)->tipo == mallocc && ((tDato* )nodo.dato)->size == (((auxDealloc*) p)->tam);
-		case mmapp: return ((tDato*)nodo.dato)->tipo == mmapp && !strcmp(((tMap* )((tDato*) nodo.dato)->extra)->fichero, ((auxDealloc*) p)->file);
-		case shared: return ((tDato*)nodo.dato)->tipo == shared && ((tShared* )((tDato*) nodo.dato)->extra)->key == ((auxDealloc* ) p)->key;
+		case mallocc: return ((tDato*)nodo.dato)->tipo == mallocc && ((tDato*)nodo.dato)->size == (((auxDealloc*) p)->tam);
+		case mmapp: return ((tDato*)nodo.dato)->tipo == mmapp && !strcmp(((tMap*)((tDato*)nodo.dato)->extra)->fichero, ((auxDealloc*) p)->file);
+		case shared: return ((tDato*)nodo.dato)->tipo == shared && ((tShared*)((tDato*)nodo.dato)->extra)->key == ((auxDealloc* ) p)->key;
 		default: return 0;
 	}
 }
@@ -803,14 +811,17 @@ void searchDealloc (tType type, auxDealloc aux, tList* l) {
 	if (!isEmptyList(*l)) {
 		while ((i != NIL) && !b) {
 			nodo = getItem(i, *l);
-			if (compare(nodo, &aux, type)) b = 1;
-			else i = next(i, *l);
+			if (compare(nodo, &aux, type))
+				b = 1;
+			else
+				i = next(i, *l);
 		}
 		if (b) {
 			deallocateAux(l, nodo, i, type);
-		} else printList(type, *l);
+		}
+		else
+			printList(type, *l);
 	}
-	else printList(type, *l);
 }
 /*
  * TODO Deallocate | lobera una de las direcciones de memorias reservadas en la lista, sin argumentos lista las direcciones
@@ -836,7 +847,8 @@ int cmd_deallocate (container* c){
 					nodo = getItem(i, c->lista);
 					deallocateAux(&c->lista, nodo, i, ((tDato*)nodo.dato)->tipo);
 				}
-				else printList(-1, c->lista);
+				else
+					printList(-1, c->lista);
 			}
 			break;
 		case 3:
@@ -963,14 +975,14 @@ void auxRecursive (int n) {
 	static char estatico[1024];
 
 	printf ("parametro n:%d en %p\n",n,&n);
-	printf ("array estatico en: %p \n",estatico);
-	printf ("array automatico en: %p\n",automatico);
+	printf ("array estatico en: %p \n",&estatico);
+	printf ("array automatico en: %p\n",&automatico);
 	n--;
 
 	if (n>0) auxRecursive(n);
 }
 
-int cmd_recursiveFunction (container* c){
+int cmd_recursiveFunction (container *c){
 
 	if (c->nargs == 2) {
 		auxRecursive((int) strtoimax(c->flags[1], NULL, 10));
@@ -984,20 +996,20 @@ int cmd_recursiveFunction (container* c){
  * TODO read fich addr | Lee fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
  * TODO read fich addr cont | Lee cont bytes de fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
  */
-int cmd_read (container* c){
-
+int cmd_read (container *c){
+	return 0;
 }
 
 /*
  * TODO write file addr cont [-o] | Escribe cont bytes de addr en file. Si file no existe se crea.
  * TODO Si ya existe, no se sobreescribe a menos que se le pase -o
  */
-int cmd_write (container* c){
-
+int cmd_write (container *c){
+	return 0;
 }
 
 struct{
-	char * CMD_NAME;
+	char *CMD_NAME;
 	int (*CMD_FUN)(container* c);
 } CMDS[] = {
 		{"autores",cmd_autores},
@@ -1033,7 +1045,7 @@ int cmdManager(container* c){
 	return COMANDO_INVALIDO;
 }
 
-int procesarEntrada(char * cadena, container* c){
+int procesarEntrada(char *cadena, container *c){
 
 	if((c->nargs = trocearCadena(cadena, c->flags))){
 		return cmdManager(c);
@@ -1041,22 +1053,6 @@ int procesarEntrada(char * cadena, container* c){
 	return 0;
 }
 
-void freeList(tList *l){
-
-	tPosL pos = first(*l);
-	tNodo aux;
-
-	while(!isEmptyList(*l)){
-		if(pos != NIL){
-			aux = getItem(pos,*l);;
-			free(aux.id);
-			free(aux.dato);
-			deleteAtPosition(pos,l);
-		}
-		pos = next(pos,*l);
-	}
-	printf(" Bye !");
-}
 /*
  * DONE - Separar los comandos query y list en dos archivos query.c y list.c
  * DONE - Hacer que el programa pueda lidiar con caracteres tipo (*,?,...)
@@ -1068,7 +1064,7 @@ int main() {
 	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File",
 						  "ERROR Deleting Directory","ERROR Listing","ERROR Inserting", "ERROR IPC"};
 	clear();
-	char * entrada ;
+	char *entrada ;
 	container c;
 	int salir = 0;
 	entrada = malloc(1024);
@@ -1078,7 +1074,9 @@ int main() {
 		imprimirPrompt();
 		leerEntrada(entrada);
 		salir = procesarEntrada(entrada, &c);
-		if(salir<0)printf("%s",ERROR_MESAGES[abs(salir)]);
+		if(salir<0)
+			printf("%s",ERROR_MESAGES[abs(salir)]);
 	}
 	free(entrada);
+	return 0;
 }

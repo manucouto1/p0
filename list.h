@@ -7,10 +7,6 @@ typedef struct {
 	void *dato;
 } tNodo;
 
-typedef  struct {
-	int key;
-} shared_info;
-
 typedef int tPosL;
 
 typedef struct {
