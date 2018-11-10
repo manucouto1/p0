@@ -39,7 +39,7 @@ typedef struct {
 
 typedef struct {
 	size_t size;
-	struct tm date;
+	char date[256];
 	tType tipo;
 	void *extra;
 }tDato;
@@ -223,28 +223,6 @@ int cmd_chdir(container *c){
 		default:
 			return COMANDO_INVALIDO;
 	}
-}
-
-void freeList(tList *l){
-
-	tPosL pos = first(*l);
-	tNodo aux;
-
-	while(!isEmptyList(*l)){
-		if(pos != NIL){
-			aux = getItem(pos,*l);
-			free(aux.id);
-			free(aux.dato);
-			deleteAtPosition(pos,l);
-		}
-		pos = next(pos,*l);
-	}
-	printf(" Bye !");
-}
-
-int cmd_exit(container *c) {
-	freeList(&c->lista);
-	return 1;
 }
 
 int cmd_create(container *c) {
@@ -554,17 +532,17 @@ void printList(tType type, tList l) {
 				dato = *((tDato*) nodo.dato);
 				switch ((tType) dato.tipo) {
 					case mallocc:
-						printf("%p: size:%lu malloc %s", nodo.id, dato.size, asctime(&dato.date));
+						printf("%p: size:%lu malloc %s", nodo.id, dato.size, dato.date);
 						break;
 					case mmapp:
 						map = *((tMap*)dato.extra);
 						printf("%p: size:%lu mmap %s (fd: %d) %s", nodo.id, dato.size,
-							   map.fichero, map.fd, asctime(&dato.date));
+							   map.fichero, map.fd, dato.date);
 						break;
 					case shared:
 						shar = *((tShared*)dato.extra);
 						printf("%p: size:%lu shared memory (key: %d) %s", nodo.id, dato.size,
-							   shar.key, asctime(&dato.date));
+							   shar.key, dato.date);
 						break;
 					default:
 						break;
@@ -675,9 +653,9 @@ void createNodo (tNodo* nodo, tType type) {
 	time_t t;
 	time(&t);
 	nodo->dato = malloc(sizeof(tDato));
-	((tDato *)nodo->dato)->extra = malloc(sizeof(void *));
+	((tDato *)nodo->dato)->extra = malloc(300); //sizeof(void *) da problemas con valgrind
 	((tDato *)nodo->dato)->tipo = type;
-	((tDato *)nodo->dato)->date = *localtime(&t);
+	strcpy(((tDato *)nodo->dato)->date,asctime(localtime(&t)));
 }
 
 void freeNodo (tNodo* nodo) {
@@ -997,6 +975,38 @@ int cmd_recursiveFunction (container *c){
  * TODO read fich addr cont | Lee cont bytes de fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
  */
 int cmd_read (container *c){
+	int fd;
+	size_t cont;
+	uintptr_t valor;
+	uint32_t *puntero;
+	FILE *fichero;
+	struct stat fileStat;
+
+	switch (c->nargs) {
+		case 3:
+		case 4:
+			valor = strtoul(c->flags[2], NULL, 0);
+			puntero = (void *) valor;
+			if ((fichero = fopen(c->flags[1], "r")) != NULL) {
+				fd = fileno(fichero);
+				fstat(fd, &fileStat);
+				if (c->nargs == 3)
+					cont = (size_t) fileStat.st_size;
+				else
+					cont = strtoul(c->flags[3], NULL, 10);
+				if (read(fd, puntero, cont) != -1) {
+					printf("Read %lu bytes from file %s into %p\n", cont, c->flags[1], puntero);
+				}
+				else
+					printf("cannot read %s: %s\n", c->flags[1], strerror(errno));
+				fclose(fichero);
+			}
+			else
+				printf("cannot read %s: %s\n", c->flags[1], strerror(errno));
+			break;
+		default:
+			return COMANDO_INVALIDO;
+	}
 	return 0;
 }
 
@@ -1005,7 +1015,60 @@ int cmd_read (container *c){
  * TODO Si ya existe, no se sobreescribe a menos que se le pase -o
  */
 int cmd_write (container *c){
+	int fd;
+	size_t cont;
+	uintptr_t valor;
+	uint32_t *puntero;
+	FILE *fichero;
+
+	switch (c->nargs) {
+		case 4:
+		case 5:
+			if (access(c->flags[1], F_OK) || (c->flags[4] != NULL && !strcmp(c->flags[4],"-o"))) {
+				valor = strtoul(c->flags[2], NULL, 0);
+				puntero = (void *) valor;
+				cont = strtoul(c->flags[3], NULL, 10);
+				if ((fichero = fopen(c->flags[1], "w+")) != NULL) {
+					fd = fileno(fichero);
+					if (write(fd, puntero, cont) != -1) {
+						printf("Written %lu bytes from memory address %p into file %s", cont, puntero, c->flags[1]);
+					} else
+						printf("cannot write %s: %s\n", c->flags[1], strerror(errno));
+					fclose(fichero);
+				} else
+					printf("cannot write %s: %s\n", c->flags[1], strerror(errno));
+			}
+			else {
+				if (c->nargs == 4)
+					printf("File %s already exists, to overwrite it use -o\n", c->flags[1]);
+				else
+					return COMANDO_INVALIDO;
+			}
+			break;
+		default:
+			return COMANDO_INVALIDO;
+	}
 	return 0;
+}
+
+void freeList(tList *l){
+
+	tPosL pos = first(*l);
+	tNodo aux;
+
+	while(!isEmptyList(*l)){
+		if(pos != NIL){
+			aux = getItem(pos,*l);
+			deallocateAux(l, aux, pos, ((tDato *)aux.dato)->tipo);
+		}
+		pos = next(pos,*l);
+	}
+	printf(" Bye !\n");
+}
+
+int cmd_exit(container *c) {
+	freeList(&c->lista);
+	return 1;
 }
 
 struct{
