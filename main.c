@@ -1068,27 +1068,30 @@ int cmd_write (container *c){
 
 	int fileExists = access(c->flags[1], F_OK);
 
-	if(c->nargs == 4 && fileExists == -1){
-		if((pos = findItem(c->flags[2], c->lista)) >=0){
-			nodo = getItem(pos, c->lista);
-			EscribirFichero(nodo.id,c->flags[1],cont);
+	if(c->nargs == 4){
+		if(fileExists == -1) {
+			if ((pos = findItem(c->flags[2], c->lista)) >= 0) {
+				nodo = getItem(pos, c->lista);
+				EscribirFichero(nodo.id, c->flags[1], cont);
+			} else
+				perror("error: dirección no encontrada");
 		} else {
-			perror("error: dirección no encontrada");
+			perror("error: el fichero ya existe, use la opción -o");
 		}
 	} else if (c -> nargs == 5) {
 		if(!strcmp(c->flags[4],"-o") && fileExists != -1){
 			if((pos = findItem(c->flags[2], c->lista)) >=0){
 				nodo = getItem(pos, c->lista);
 				EscribirFichero(nodo.id,c->flags[1],cont);
-			} else {
+			} else
 				perror("error: dirección no encontrada");
-			}
-		} else {
+
+		} else
 			perror("error: el fichero ya existe, use la opción -o");
-		}
-	} else {
+
+	} else
 		return COMANDO_INVALIDO;
-	}
+
 	return 0;
 }
 
