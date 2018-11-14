@@ -1020,24 +1020,17 @@ ssize_t LeerFichero (char *fich, void *p, ssize_t n) { /*n=-1 indica que se lea 
  */
 int cmd_read (container *c){
 
-	tNodo nodo;
-	tPosL pos;
 	int offset = -1;
 	long cont = 0;
+	void *puntero;
 	// Creo que es mejor usar una direccion que hayamos guardado en la lista antes con -malloc
 	if(c->nargs == 4 || c->nargs == 3){
-		if((pos = findItem(c->flags[2],c->lista)) >= 0) {
-			nodo = getItem(pos, c->lista);
-			if(c->flags[3])
-				offset = (int) strtol(c->flags[3], NULL, 10);
-			cont = LeerFichero(c->flags[1], nodo.id, offset);
-
-			printf("Read %lu bytes from file %s into %p\n", cont, c->flags[1], nodo.id);
-			return 0;
-		} else {
-			perror("error: direccion no encontrada");
-			return ERROR_READING;
-		}
+		puntero = (void *) strtol(c->flags[2],NULL,0);
+		if(c->flags[3])
+			offset = (int) strtol(c->flags[3], NULL, 10);
+		cont = LeerFichero(c->flags[1], puntero, offset);
+		printf("Read %lu bytes from file %s into %p\n", cont, c->flags[1], puntero);
+		return 0;
 	} else
 		return COMANDO_INVALIDO;
 }
@@ -1062,30 +1055,22 @@ int EscribirFichero (void *puntero, char *fich, size_t cont) {
  * TODO Si ya existe, no se sobreescribe a menos que se le pase -o
  */
 int cmd_write (container *c){
-	tNodo nodo;
-	tPosL pos;
+	void *puntero;
 	size_t cont = 0;
 
 	int fileExists = access(c->flags[1], F_OK);
 
 	if(c->nargs == 4){
 		if(fileExists == -1) {
-			if ((pos = findItem(c->flags[2], c->lista)) >= 0) {
-				nodo = getItem(pos, c->lista);
-				EscribirFichero(nodo.id, c->flags[1], cont);
-			} else
-				perror("error: dirección no encontrada");
-		} else {
+			puntero = (void *) strtol(c->flags[2],NULL,0);
+			EscribirFichero(puntero, c->flags[1], cont);
+		} else
 			perror("error: el fichero ya existe, use la opción -o");
-		}
+
 	} else if (c -> nargs == 5) {
 		if(!strcmp(c->flags[4],"-o") && fileExists != -1){
-			if((pos = findItem(c->flags[2], c->lista)) >=0){
-				nodo = getItem(pos, c->lista);
-				EscribirFichero(nodo.id,c->flags[1],cont);
-			} else
-				perror("error: dirección no encontrada");
-
+			puntero = (void *) strtol(c->flags[2],NULL,0);
+			EscribirFichero(puntero,c->flags[1],cont);
 		} else
 			perror("error: el fichero ya existe, use la opción -o");
 
