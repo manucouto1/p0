@@ -1019,7 +1019,6 @@ ssize_t LeerFichero (char *fich, void *p, ssize_t n) { /*n=-1 indica que se lea 
  * DONE read fich addr cont | Lee cont bytes de fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
  */
 int cmd_read (container *c){
-
 	int offset = -1;
 	long cont = 0;
 	void *puntero;
@@ -1062,17 +1061,19 @@ int cmd_write (container *c){
 
 	if(c->nargs == 4){
 		if(fileExists == -1) {
+			cont = strtoul(c->flags[3],NULL,10);
 			puntero = (void *) strtol(c->flags[2],NULL,0);
 			EscribirFichero(puntero, c->flags[1], cont);
 		} else
 			perror("error: el fichero ya existe, use la opción -o");
 
 	} else if (c -> nargs == 5) {
-		if(!strcmp(c->flags[4],"-o") && fileExists != -1){
+		if(!strcmp(c->flags[4],"-o")){
+			cont = strtoul(c->flags[3],NULL,10);
 			puntero = (void *) strtol(c->flags[2],NULL,0);
 			EscribirFichero(puntero,c->flags[1],cont);
 		} else
-			perror("error: el fichero ya existe, use la opción -o");
+			return  COMANDO_INVALIDO;
 
 	} else
 		return COMANDO_INVALIDO;
