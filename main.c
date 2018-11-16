@@ -1025,7 +1025,7 @@ int cmd_read (container *c){
 	return 0;
 }
 
-int EscribirFichero (void *puntero, char *fich, size_t cont) {
+void EscribirFichero (void *puntero, char *fich, size_t cont) {
 	FILE *fichero;
 	int fd;
 
