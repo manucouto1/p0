@@ -1,4 +1,8 @@
-#include <stdio.h>
+/*
+ * Autores:
+ * Manuel Couto Pintos, login: manuel.couto1@udc.es, DNI: 77462284D
+ * Víctor Escudero González, login: v.escudero@udc.es, DNI: 54153242H
+ */#include <stdio.h>
 #include <memory.h>
 #include <stdlib.h>
 #include <unistd.h>
