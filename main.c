@@ -616,7 +616,7 @@ void * ObtenerMemoriaShmget (key_t clave, off_t tam, tNodo* nodo) {
 		errno=EINVAL;
 		return NULL;
 	}
-	if ((id=shmget(clave, tam, flags))==-1)
+	if ((id=shmget(clave,(size_t) tam, flags))==-1)
 		return (NULL);
 	if ((p=shmat(id,NULL,0))==(void*) -1){
 		aux=errno;
