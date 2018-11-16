@@ -27,6 +27,8 @@
 #define ERROR_INSERT -6
 #define ERROR_IPC -7
 
+#define LEERCOMPLETO ((ssize_t)-1)
+
 #define clear() printf("\033[H\033[J")
 
 typedef enum { mallocc = 0, mmapp = 1, shared = 2} tType;
@@ -952,12 +954,13 @@ void auxRecursive (int n) {
 	char automatico[1024];
 	static char estatico[1024];
 
-	printf ("parametro n:%d en %p\n",n,&n);
-	printf ("array estatico en: %p \n",&estatico);
-	printf ("array automatico en: %p\n",&automatico);
-	n--;
-
-	if (n>0) auxRecursive(n);
+	if (n > 0) {
+		printf("parametro n:%d en %p\n", n, &n);
+		printf("array estatico en: %p \n", &estatico);
+		printf("array automatico en: %p\n", &automatico);
+		n--;
+		auxRecursive(n);
+	}
 }
 
 int cmd_recursiveFunction (container *c){
@@ -974,35 +977,49 @@ int cmd_recursiveFunction (container *c){
  * TODO read fich addr | Lee fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
  * TODO read fich addr cont | Lee cont bytes de fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
  */
+
+ssize_t LeerFichero (char *fich, void *p, ssize_t n) {
+
+	ssize_t nleidos,tam=n;
+	int df, aux;
+	struct stat s;
+
+	if (stat (fich,&s)==-1 || (df=open(fich,O_RDONLY))==-1)
+		return ((ssize_t)-1);
+
+	if (n==LEERCOMPLETO)
+		tam=(ssize_t) s.st_size;
+
+	if ((nleidos=read(df,p, tam))==-1){
+		aux=errno;
+		close(df);
+		errno=aux;
+		return ((ssize_t)-1);
+	}
+
+	close (df);
+	return (nleidos);
+}
+
 int cmd_read (container *c){
-	int fd;
-	size_t cont;
+	ssize_t cont;
 	uintptr_t valor;
 	uint32_t *puntero;
-	FILE *fichero;
-	struct stat fileStat;
 
 	switch (c->nargs) {
 		case 3:
 		case 4:
 			valor = strtoul(c->flags[2], NULL, 0);
 			puntero = (void *) valor;
-			if ((fichero = fopen(c->flags[1], "r")) != NULL) {
-				fd = fileno(fichero);
-				fstat(fd, &fileStat);
 				if (c->nargs == 3)
-					cont = (size_t) fileStat.st_size;
+					cont = LEERCOMPLETO;
 				else
 					cont = strtoul(c->flags[3], NULL, 10);
-				if (read(fd, puntero, cont) != -1) {
+				cont = LeerFichero(c->flags[1], puntero, cont);
+				if (cont != -1)
 					printf("Read %lu bytes from file %s into %p\n", cont, c->flags[1], puntero);
-				}
 				else
 					printf("cannot read %s: %s\n", c->flags[1], strerror(errno));
-				fclose(fichero);
-			}
-			else
-				printf("cannot read %s: %s\n", c->flags[1], strerror(errno));
 			break;
 		default:
 			return COMANDO_INVALIDO;
