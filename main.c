@@ -2,7 +2,8 @@
  * Autores:
  * Manuel Couto Pintos, login: manuel.couto1@udc.es, DNI: 77462284D
  * Víctor Escudero González, login: v.escudero@udc.es, DNI: 54153242H
- */#include <stdio.h>
+ */
+#include <stdio.h>
 #include <memory.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -1029,48 +1030,44 @@ int cmd_read (container *c){
 	return 0;
 }
 
-void EscribirFichero (void *puntero, char *fich, size_t cont) {
-	FILE *fichero;
-	int fd;
-
-	if ((fichero = fopen(fich, "w+")) != NULL) {
-		fd = fileno(fichero);
-		if (write(fd, puntero, cont) != -1) {
-			printf("Written %lu bytes from memory address %p into file %s", cont, puntero, fich);
-		} else
-			printf("cannot write %s: %s\n", fich, strerror(errno));
-		fclose(fichero);
-	} else
-		printf("cannot write %s: %s\n", fich, strerror(errno));
-}
-
 /*
  * TODO write file addr cont [-o] | Escribe cont bytes de addr en file. Si file no existe se crea.
  * TODO Si ya existe, no se sobreescribe a menos que se le pase -o
  */
 int cmd_write (container *c){
-	void *puntero;
-	size_t cont = 0;
+	int fd;
+	size_t cont;
+	uintptr_t valor;
+	uint32_t *puntero;
+	FILE *fichero;
 
-	int fileExists = access(c->flags[1], F_OK);
-
-	if(c->nargs == 4){
-		if(fileExists == -1) {
-			puntero = (void *) strtol(c->flags[2],NULL,0);
-			EscribirFichero(puntero, c->flags[1], cont);
-		} else
-			perror("error: el fichero ya existe, use la opción -o");
-
-	} else if (c -> nargs == 5) {
-		if(!strcmp(c->flags[4],"-o") && fileExists != -1){
-			puntero = (void *) strtol(c->flags[2],NULL,0);
-			EscribirFichero(puntero,c->flags[1],cont);
-		} else
-			perror("error: el fichero ya existe, use la opción -o");
-
-	} else
-		return COMANDO_INVALIDO;
-
+	switch (c->nargs) {
+		case 4:
+		case 5:
+			if (access(c->flags[1], F_OK) || (c->flags[4] != NULL && !strcmp(c->flags[4],"-o"))) {
+				valor = strtoul(c->flags[2], NULL, 0);
+				puntero = (void *) valor;
+				cont = strtoul(c->flags[3], NULL, 10);
+				if ((fichero = fopen(c->flags[1], "w+")) != NULL) {
+					fd = fileno(fichero);
+					if (write(fd, puntero, cont) != -1) {
+						printf("Written %lu bytes from memory address %p into file %s", cont, puntero, c->flags[1]);
+					} else
+						printf("cannot write %s: %s\n", c->flags[1], strerror(errno));
+					fclose(fichero);
+				} else
+					printf("cannot write %s: %s\n", c->flags[1], strerror(errno));
+			}
+			else {
+				if (c->nargs == 4)
+					printf("File %s already exists, to overwrite it use -o\n", c->flags[1]);
+				else
+					return COMANDO_INVALIDO;
+			}
+			break;
+		default:
+			return COMANDO_INVALIDO;
+	}
 	return 0;
 }
 
