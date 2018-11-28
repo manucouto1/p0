@@ -21,6 +21,7 @@
 #include <sys/shm.h>
 #include <ctype.h>
 #include <sys/mman.h>
+#include <sys/resource.h>
 
 #include "list.h"
 
@@ -1071,6 +1072,40 @@ int cmd_write (container *c){
 	return 0;
 }
 
+int cmd_setpriority (container *c) {
+	id_t pid;
+	int priority;
+	errno = 0; //Necesario para procesamiento de error con getpriority
+
+	switch (c->nargs) {
+		case 2:
+			pid = (id_t) strtoimax(c->flags[1], NULL, 10);
+			priority = getpriority(PRIO_PROCESS, pid);
+			if (!errno)
+				printf("Priority of process %d: %d\n", pid, priority);
+			else
+				perror("Cannot get priority");
+			break;
+		case 3:
+			pid = (id_t) strtoimax(c->flags[1], NULL, 10);
+			priority = (int) strtoimax(c->flags[2], NULL, 10);
+			if (setpriority(PRIO_PROCESS, pid, priority) == 0)
+				printf("Priority of process %d changed to: %d\n", pid, priority);
+			else
+				perror("Cannot set priority");
+			break;
+		default:
+			return COMANDO_INVALIDO;
+	}
+	return 0;
+}
+
+int cmd_fork(container *c) {
+	int pid;
+
+
+}
+
 void freeList(tList *l){
 
 	tPosL pos = first(*l);
@@ -1115,6 +1150,8 @@ struct{
 		{"exit",cmd_exit},
 		{"end",cmd_exit},
 		{"fin",cmd_exit},
+		{"setpriority", cmd_setpriority},
+		{"fork", cmd_fork},
 		{NULL, NULL}
 };
 
