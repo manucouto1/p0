@@ -16,10 +16,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ad3a48cb-8dd3-4daa-a8f4-ce981cdc94d0" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/main.dir/C.includecache" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/main.dir/C.includecache" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/main.dir/main.c.o" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/main.dir/main.c.o" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/main.exe" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/main.exe" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.c" beforeDir="false" afterPath="$PROJECT_DIR$/main.c" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/cmake-build-debug/" />
@@ -65,12 +61,12 @@
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
           <entry key="GDB" value="5078" />
-          <entry key="c" value="40182" />
+          <entry key="c" value="40198" />
           <entry key="cc" value="5" />
           <entry key="h" value="878" />
           <entry key="m" value="1" />
           <entry key="main (disassembly)" value="2" />
-          <entry key="txt" value="56" />
+          <entry key="txt" value="62" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
@@ -78,8 +74,8 @@
           <entry key="CMakeLists.txt" value="46" />
           <entry key="Disassembly" value="2" />
           <entry key="GDBCommands" value="5078" />
-          <entry key="ObjectiveC" value="41066" />
-          <entry key="PLAIN_TEXT" value="10" />
+          <entry key="ObjectiveC" value="41082" />
+          <entry key="PLAIN_TEXT" value="16" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.open">
@@ -95,6 +91,8 @@
       <usages-collector id="statistics.vcs.git.usages">
         <counts>
           <entry key="git.branch.checkout.local" value="1" />
+          <entry key="git.branch.checkout.with.rebase" value="1" />
+          <entry key="git.branch.rebase" value="1" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
@@ -119,8 +117,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/list.c">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="646">
-              <caret line="38" column="4" selection-start-line="38" selection-start-column="4" selection-end-line="38" selection-end-column="4" />
+            <state relative-caret-position="51">
+              <caret line="6" column="5" selection-start-line="6" selection-start-column="5" selection-end-line="6" selection-end-column="5" />
               <folding>
                 <element signature="e#0#17#0" expanded="true" />
               </folding>
@@ -149,8 +147,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/main.c">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="65">
-              <caret line="1169" column="13" lean-forward="true" selection-start-line="1169" selection-start-column="13" selection-end-line="1169" selection-end-column="13" />
+            <state relative-caret-position="438">
+              <caret line="1162" column="35" selection-start-line="1162" selection-start-column="35" selection-end-line="1162" selection-end-column="35" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -340,7 +338,7 @@
       <workItem from="1543873008688" duration="599000" />
       <workItem from="1543995331216" duration="11933000" />
       <workItem from="1544032627716" duration="1514000" />
-      <workItem from="1544034938487" duration="3805000" />
+      <workItem from="1544034938487" duration="4215000" />
     </task>
     <task id="LOCAL-00001" summary="Commit 1">
       <created>1538560475699</created>
@@ -608,11 +606,18 @@
       <option name="project" value="LOCAL" />
       <updated>1544036808707</updated>
     </task>
-    <option name="localTasksCounter" value="39" />
+    <task id="LOCAL-00039" summary="Merge branch 'master' of https://github.com/manucouto1/p0&#10;&#10;# Conflicts:&#10;#&#9;main.c">
+      <created>1544038940402</created>
+      <option name="number" value="00039" />
+      <option name="presentableId" value="LOCAL-00039" />
+      <option name="project" value="LOCAL" />
+      <updated>1544038940402</updated>
+    </task>
+    <option name="localTasksCounter" value="40" />
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="332550000" />
+    <option name="totallyTimeSpent" value="332960000" />
   </component>
   <component name="TodoView">
     <todo-panel id="selected-file">
@@ -632,7 +637,7 @@
       <window_info id="Favorites" order="2" sideWeight="0.51989025" side_tool="true" weight="0.3298217" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.7645601" visible="true" weight="0.0" />
+      <window_info anchor="bottom" id="Run" order="2" sideWeight="0.7645601" visible="true" weight="0.0" />
       <window_info anchor="bottom" id="Debug" order="3" sideWeight="0.68277574" weight="0.32955974" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -640,7 +645,7 @@
       <window_info anchor="bottom" id="Database Changes" order="7" show_stripe_button="false" />
       <window_info anchor="bottom" id="Messages" order="8" sideWeight="0.7657993" weight="0.42767295" />
       <window_info anchor="bottom" id="Terminal" order="9" sideWeight="0.4972178" weight="0.15510522" />
-      <window_info anchor="bottom" id="Event Log" order="10" sideWeight="0.2354399" side_tool="true" visible="true" weight="0.0" />
+      <window_info active="true" anchor="bottom" id="Event Log" order="10" sideWeight="0.2354399" side_tool="true" visible="true" weight="0.0" />
       <window_info anchor="bottom" id="Version Control" order="11" sideWeight="0.45695364" weight="0.06351183" />
       <window_info anchor="bottom" id="CMake" order="12" sideWeight="0.5087297" weight="0.2403487" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
@@ -830,16 +835,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/list.c">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="646">
-          <caret line="38" column="4" selection-start-line="38" selection-start-column="4" selection-end-line="38" selection-end-column="4" />
-          <folding>
-            <element signature="e#0#17#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/CMakeLists.txt">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="119">
@@ -857,10 +852,20 @@
     <entry file="file://$PROJECT_DIR$/cmake-build-debug/prog">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
+    <entry file="file://$PROJECT_DIR$/list.c">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="51">
+          <caret line="6" column="5" selection-start-line="6" selection-start-column="5" selection-end-line="6" selection-end-column="5" />
+          <folding>
+            <element signature="e#0#17#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/main.c">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="65">
-          <caret line="1169" column="13" lean-forward="true" selection-start-line="1169" selection-start-column="13" selection-end-line="1169" selection-end-column="13" />
+        <state relative-caret-position="438">
+          <caret line="1162" column="35" selection-start-line="1162" selection-start-column="35" selection-end-line="1162" selection-end-column="35" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>
