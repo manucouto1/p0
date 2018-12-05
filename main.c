@@ -22,6 +22,7 @@
 #include <ctype.h>
 #include <sys/mman.h>
 #include <sys/resource.h>
+#include <sys/wait.h>
 
 #include "list.h"
 
@@ -1031,10 +1032,6 @@ int cmd_read (container *c){
 	return 0;
 }
 
-/*
- * TODO write file addr cont [-o] | Escribe cont bytes de addr en file. Si file no existe se crea.
- * TODO Si ya existe, no se sobreescribe a menos que se le pase -o
- */
 int cmd_write (container *c){
 	int fd;
 	size_t cont;
@@ -1103,7 +1100,48 @@ int cmd_setpriority (container *c) {
 int cmd_fork(container *c) {
 	int pid;
 
+	if ((pid = fork()) == 0) {
+	}
+	else
+		waitpid(pid, NULL, 0);
 
+	return 0;
+}
+
+char* searchExec(tList lista, char* ejecutable) {
+	return NULL; //TODO Implementar
+}
+
+int cmd_exec(container* c) {
+	int numFlags = c->nargs - 2;
+	char *pathExec;
+	int prioridad;
+	char* flagsExec[numFlags];
+
+	if (c->nargs < 2)
+		return COMANDO_INVALIDO;
+	else {
+		for (int i = 0; i < numFlags - 1; i++) {
+			strcpy(flagsExec[i], c->flags[i + 2]);
+		}
+
+		if (c->flags[c->nargs - 1][0] != '@') {
+			strcpy(flagsExec[numFlags - 1], c->flags[c->nargs - 1]); //El último parámetro no es la prioridad
+		} else {
+			prioridad = (int) strtoimax(&c->flags[c->nargs - 1][1], NULL, 10);
+			setpriority(PRIO_PROCESS, (id_t) getpid(), prioridad);
+		}
+
+		pathExec = searchExec(c->lista, c->flags[1]);
+
+		if (pathExec == NULL)
+			printf("Imposible ejecutar %s: No se ha encontrado el fichero\n", c->flags[1]);
+		else if (execv(pathExec, flagsExec) == -1) {
+			perror("No se ha podido ejecutar el fichero");
+		}
+	}
+
+	return 0;
 }
 
 void freeList(tList *l){
@@ -1152,6 +1190,7 @@ struct{
 		{"fin",cmd_exit},
 		{"setpriority", cmd_setpriority},
 		{"fork", cmd_fork},
+		{"exec", cmd_exec},
 		{NULL, NULL}
 };
 
@@ -1173,12 +1212,6 @@ int procesarEntrada(char *cadena, container *c){
 	return 0;
 }
 
-/*
- * DONE - Separar los comandos query y list en dos archivos query.c y list.c
- * DONE - Hacer que el programa pueda lidiar con caracteres tipo (*,?,...)
- * DONE - Cunado no se ejecuta el comando de la forma esperada hay que informar al usuarion con un mensaje de error, para cada comando
- * DONE - Revisar lo que comentan en la seccion HELPFUL INFORMATION
- */
 int main() {
 
 	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File",
