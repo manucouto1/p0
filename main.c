@@ -433,9 +433,6 @@ int cmd_query(container* c) {
  	return 0;
 }
 
-/*
- * TODO modificar la función para que concatene el path de cada nivel en un string en vez de cambiar el directorio de trabajo
- */
 int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int argR, int argN){
 
 	DIR *dir;
@@ -444,16 +441,15 @@ int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int
 	char current[1024];
 	getcwd(current, 1024);
 
-	if ((nivel<=1) || argR) {
+	if ((nivel<1) || argR) {
 		if (S_ISDIR(path_stat.st_mode)) {
 			if ((dir = opendir(elemento)) != NULL) {
-				nivel++;
 				chdir(elemento);
 				while ((ent = readdir(dir)) != NULL) {
 					if (strcmp(ent->d_name, ".")!=0 && strcmp(ent->d_name, "..")!=0) {
 						lstat(ent->d_name, &path_stat);
 						if (!(!argH && (ent->d_name[0] == '.'))) {
-							fun_list_rec(ent->d_name, path_stat, nivel, argH, argR, argN);
+							fun_list_rec(ent->d_name, path_stat, nivel++, argH, argR, argN);
 						}
 					}
 				}
@@ -672,13 +668,7 @@ void freeNodo (tNodo* nodo) {
 		free((tType*)((tDato*)nodo->dato)->extra);
 	free((tDato*)nodo->dato);
 }
-/*
- * DONE Allocate | reserva memoria y la guarda en la lista, si no se le pasan argumentos muestra los elementos de la lista
- * DONE -malloc [tam] | se le indica el tamaño devuelve la direccion de memoria, sin argumentos lista elementos
- * DONE -mmap fich [perm]
- * TODO -createshared [cl] [tam]
- * TODO -shared [cl]
- */
+
 int cmd_allocate (container* c) {
 	tNodo nodo;
 
@@ -810,11 +800,7 @@ void searchDealloc (tType type, auxDealloc aux, tList* l) {
 			printList(type, *l);
 	}
 }
-/*
- * TODO Deallocate | lobera una de las direcciones de memorias reservadas en la lista, sin argumentos lista las direcciones
- * TODO -malloc [tam] | Se elimina uno de los bloques de tamaño [tam] de la lista, si no hay o no se pasa argumento lista
- * TODO -mmap fich | deshace un mapeo del fichero <-> memoria y borra de lista,
- */
+
 int cmd_deallocate (container* c){
 	tNodo nodo;
 	tPosL i;
@@ -861,9 +847,7 @@ int cmd_deallocate (container* c){
 
 	return 0;
 }
-/*
- *TODO rmkey cl | Elimina la región de memoria compartida de llave cl. Simplemente es una llamada a shmctl(id, IPC RMID ...)
- */
+
 int cmd_rmkey (container* c) {
 	key_t clave;
 	int id;
@@ -886,9 +870,7 @@ int cmd_rmkey (container* c) {
 	}
 	else return COMANDO_INVALIDO;
 }
-/*
- *TODO mem | Imprime la dirección de memoria de 3 funciones del programa, tres variables globales y tres variables locales
- */
+
 int cmd_mem (container* c){
 	int local1;
 	int local2;
@@ -906,11 +888,7 @@ int cmd_mem (container* c){
 	}
 	else return COMANDO_INVALIDO;
 }
-/*
- * TODO memdump addr | Enseña el contenido de 25 bytes empezando por addr
- * TODO memdump addr [cont] | Enseña el contenido cont bytes empezando por addr
- * Imprime 25 bytes por línea, podría producir segmentation fault
- */
+
 int cmd_memDump (container* c){
 	int cont, j;
 	uintptr_t valor;
@@ -954,9 +932,7 @@ int cmd_memDump (container* c){
 
 	return 0;
 }
-/*
- *
- */
+
 void auxRecursive (int n) {
 	char automatico[1024];
 	static char estatico[1024];
@@ -979,11 +955,6 @@ int cmd_recursiveFunction (container *c){
 
 	return 0;
 }
-
-/*
- * TODO read fich addr | Lee fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
- * TODO read fich addr cont | Lee cont bytes de fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
- */
 
 ssize_t LeerFichero (char *fich, void *p, ssize_t n) {
 
