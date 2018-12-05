@@ -45,6 +45,8 @@ ctype.h
 -
 sys/mman.h
 -
+wait.h
+-
 list.h
 /cygdrive/c/Users/manuc/CLionProjects/p0/list.h
 

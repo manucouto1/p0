@@ -17,12 +17,9 @@
   <component name="ChangeListManager">
     <list default="true" id="ad3a48cb-8dd3-4daa-a8f4-ce981cdc94d0" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/main.dir/list.c.o" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/main.dir/list.c.o" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/main.dir/C.includecache" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/main.dir/C.includecache" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/main.dir/main.c.o" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/main.dir/main.c.o" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmake-build-debug/main.exe" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/main.exe" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmake-build-debug/main.exe.stackdump" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/main.exe.stackdump" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/list.c" beforeDir="false" afterPath="$PROJECT_DIR$/list.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/list.h" beforeDir="false" afterPath="$PROJECT_DIR$/list.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.c" beforeDir="false" afterPath="$PROJECT_DIR$/main.c" afterDir="false" />
     </list>
     <ignored path="$PROJECT_DIR$/cmake-build-debug/" />
@@ -68,7 +65,7 @@
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
           <entry key="GDB" value="5078" />
-          <entry key="c" value="40166" />
+          <entry key="c" value="40182" />
           <entry key="cc" value="5" />
           <entry key="h" value="878" />
           <entry key="m" value="1" />
@@ -81,7 +78,7 @@
           <entry key="CMakeLists.txt" value="46" />
           <entry key="Disassembly" value="2" />
           <entry key="GDBCommands" value="5078" />
-          <entry key="ObjectiveC" value="41050" />
+          <entry key="ObjectiveC" value="41066" />
           <entry key="PLAIN_TEXT" value="10" />
         </counts>
       </usages-collector>
@@ -95,7 +92,11 @@
         </counts>
       </usages-collector>
       <usages-collector id="statistics.cidr.testingFrameworks.usages" />
-      <usages-collector id="statistics.vcs.git.usages" />
+      <usages-collector id="statistics.vcs.git.usages">
+        <counts>
+          <entry key="git.branch.checkout.local" value="1" />
+        </counts>
+      </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
         <counts>
           <entry key="c" value="6" />
@@ -148,8 +149,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/main.c">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="2154">
-              <caret line="1313" lean-forward="true" selection-start-line="1313" selection-end-line="1313" />
+            <state relative-caret-position="65">
+              <caret line="1169" column="13" lean-forward="true" selection-start-line="1169" selection-start-column="13" selection-end-line="1169" selection-end-column="13" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -224,9 +225,9 @@
   </component>
   <component name="OCFindUsagesOptions" text="true" ivars="false" properties="true" derivedClasses="false" />
   <component name="ProjectFrameBounds">
-    <option name="x" value="1269" />
-    <option name="width" value="1302" />
-    <option name="height" value="1392" />
+    <option name="x" value="1270" />
+    <option name="width" value="1301" />
+    <option name="height" value="1391" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectView">
@@ -339,7 +340,7 @@
       <workItem from="1543873008688" duration="599000" />
       <workItem from="1543995331216" duration="11933000" />
       <workItem from="1544032627716" duration="1514000" />
-      <workItem from="1544034938487" duration="1683000" />
+      <workItem from="1544034938487" duration="3805000" />
     </task>
     <task id="LOCAL-00001" summary="Commit 1">
       <created>1538560475699</created>
@@ -600,11 +601,18 @@
       <option name="project" value="LOCAL" />
       <updated>1542280320940</updated>
     </task>
-    <option name="localTasksCounter" value="38" />
+    <task id="LOCAL-00038" summary="Merge branch 'master' of https://github.com/manucouto1/p0&#10;&#10;# Conflicts:&#10;#&#9;main.c">
+      <created>1544036808707</created>
+      <option name="number" value="00038" />
+      <option name="presentableId" value="LOCAL-00038" />
+      <option name="project" value="LOCAL" />
+      <updated>1544036808707</updated>
+    </task>
+    <option name="localTasksCounter" value="39" />
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="330428000" />
+    <option name="totallyTimeSpent" value="332550000" />
   </component>
   <component name="TodoView">
     <todo-panel id="selected-file">
@@ -616,22 +624,23 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="846" y="0" width="868" height="928" extended-state="0" />
+    <frame x="847" y="0" width="867" height="927" extended-state="0" />
+    <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.45321637" visible="true" weight="0.074257426" />
-      <window_info id="Structure" order="1" sideWeight="0.5467836" side_tool="true" visible="true" weight="0.074257426" />
+      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.4553459" visible="true" weight="0.3370508" />
+      <window_info id="Structure" order="1" sideWeight="0.5446541" side_tool="true" visible="true" weight="0.3370508" />
       <window_info id="Favorites" order="2" sideWeight="0.51989025" side_tool="true" weight="0.3298217" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.7673267" visible="true" weight="0.5703518" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.7645601" visible="true" weight="0.0" />
       <window_info anchor="bottom" id="Debug" order="3" sideWeight="0.68277574" weight="0.32955974" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" sideWeight="0.6993517" weight="0.19858713" />
       <window_info anchor="bottom" id="Database Changes" order="7" show_stripe_button="false" />
-      <window_info anchor="bottom" id="Messages" order="8" sideWeight="0.76856434" weight="0.42839196" />
+      <window_info anchor="bottom" id="Messages" order="8" sideWeight="0.7657993" weight="0.42767295" />
       <window_info anchor="bottom" id="Terminal" order="9" sideWeight="0.4972178" weight="0.15510522" />
-      <window_info anchor="bottom" id="Event Log" order="10" sideWeight="0.23267327" side_tool="true" visible="true" weight="0.5703518" />
+      <window_info anchor="bottom" id="Event Log" order="10" sideWeight="0.2354399" side_tool="true" visible="true" weight="0.0" />
       <window_info anchor="bottom" id="Version Control" order="11" sideWeight="0.45695364" weight="0.06351183" />
       <window_info anchor="bottom" id="CMake" order="12" sideWeight="0.5087297" weight="0.2403487" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
@@ -850,8 +859,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/main.c">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2154">
-          <caret line="1313" lean-forward="true" selection-start-line="1313" selection-end-line="1313" />
+        <state relative-caret-position="65">
+          <caret line="1169" column="13" lean-forward="true" selection-start-line="1169" selection-start-column="13" selection-end-line="1169" selection-end-column="13" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>
