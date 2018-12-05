@@ -1,0 +1,16 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/vic/Escritorio/pso/P1/list.c
+list.h
+/home/vic/Escritorio/pso/P1/list.h
+stdio.h
+-
+
+/home/vic/Escritorio/pso/P1/list.h
+

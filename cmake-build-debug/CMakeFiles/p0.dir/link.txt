@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/p0.dir/list.c.o  -o p0 
