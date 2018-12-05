@@ -9,16 +9,11 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="92e101db-9a00-4fda-b796-ada29aa2a83a" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
-    <ignored path=".idea/" />
+    <list default="true" id="92e101db-9a00-4fda-b796-ada29aa2a83a" name="Default Changelist" comment="" />
     <manually-removed-from-ignored>
       <directory path="$PROJECT_DIR$/cmake-build-debug/" />
       <directory path="cmake-build-debug/" />
+      <directory path=".idea/" />
     </manually-removed-from-ignored>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -44,8 +39,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/main.c">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-3496">
-              <caret line="134" column="35" lean-forward="true" selection-start-line="134" selection-start-column="35" selection-end-line="134" selection-end-column="35" />
+            <state relative-caret-position="-3762">
+              <caret line="321" selection-start-line="321" selection-end-line="322" />
             </state>
           </provider>
         </entry>
@@ -118,7 +113,7 @@
     <detection-done>true</detection-done>
     <sorting>DEFINITION_ORDER</sorting>
   </component>
-  <component name="ProjectFrameBounds" extendedState="6">
+  <component name="ProjectFrameBounds" extendedState="7">
     <option name="x" value="745" />
     <option name="y" value="27" />
     <option name="width" value="1054" />
@@ -259,7 +254,7 @@
       <workItem from="1544035027587" duration="6800000" />
       <workItem from="1544045755617" duration="145000" />
       <workItem from="1544046359182" duration="178000" />
-      <workItem from="1544052623542" duration="1151000" />
+      <workItem from="1544052623542" duration="1347000" />
     </task>
     <task id="LOCAL-00001" summary="fork y exec">
       <created>1544041243677</created>
@@ -275,12 +270,12 @@
       <option name="project" value="LOCAL" />
       <updated>1544052942119</updated>
     </task>
-    <task id="LOCAL-00003" summary="list.c">
-      <created>1540899664175</created>
+    <task id="LOCAL-00003" summary="fork y exec">
+      <created>1544053858962</created>
       <option name="number" value="00003" />
       <option name="presentableId" value="LOCAL-00003" />
       <option name="project" value="LOCAL" />
-      <updated>1540899664175</updated>
+      <updated>1544053858962</updated>
     </task>
     <task id="LOCAL-00004" summary="list.c">
       <created>1540902987906</created>
@@ -450,14 +445,15 @@
       <option name="project" value="LOCAL" />
       <updated>1544040207637</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="2099000" />
+    <option name="totallyTimeSpent" value="2295000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="67" y="25" width="1853" height="1055" extended-state="6" />
+    <editor active="true" />
     <layout>
       <window_info active="true" content_ui="combo" id="Project" order="0" sideWeight="0.46141478" visible="true" weight="0.28002214" />
       <window_info id="Structure" order="1" sideWeight="0.5385852" side_tool="true" visible="true" weight="0.28002214" />
@@ -506,8 +502,8 @@
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/main.c">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-3496">
-          <caret line="134" column="35" lean-forward="true" selection-start-line="134" selection-start-column="35" selection-end-line="134" selection-end-column="35" />
+        <state relative-caret-position="-3762">
+          <caret line="321" selection-start-line="321" selection-end-line="322" />
         </state>
       </provider>
     </entry>
