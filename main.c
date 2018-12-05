@@ -16,6 +16,7 @@
 #include <sys/shm.h>
 #include <ctype.h>
 #include <sys/mman.h>
+#include <wait.h>
 
 #include "list.h"
 
@@ -27,13 +28,20 @@
 #define ERROR_INSERT -6
 #define ERROR_IPC -7
 #define ERROR_READING -8
+#define ERROR_FORK -9
+
 
 #define clear() printf("\033[H\033[J")
+
+#define MAXSEARCHLIST 128
+#define MAXNOMBRE 1024
+#define MAXALLOC 4096
 
 typedef enum { mallocc = 0, mmapp = 1, shared = 2} tType;
 
 typedef struct {
 	tList lista;
+	tList searchList;
 	int nargs;
 	char *flags[1024];
 }container;
@@ -425,9 +433,6 @@ int cmd_query(container* c) {
  	return 0;
 }
 
-/*
- * TODO modificar la función para que concatene el path de cada nivel en un string en vez de cambiar el directorio de trabajo
- */
 int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int argR, int argN){
 
 	DIR *dir;
@@ -636,6 +641,7 @@ void *ObtenerMemoriaShmget (key_t key, size_t tam) {
 	shmctl(id,IPC_STAT, &s);
 	return p;
 }
+
 int AllocCreateShared (char* arg[], tNodo *nodo) {
 	key_t k;
 	size_t tam = 0;
@@ -1081,23 +1087,160 @@ int cmd_write (container *c){
 	return 0;
 }
 
-void freeList(tList *l){
+int cmd_setPriority(container *c){
+	return 0;
+}
 
-	tPosL pos = first(*l);
+void addPathSearchList(tList *l){
+	tNodo nodo;
+	char *aux;
+	char *p;
+
+	if ((p=getenv("PATH"))==NULL){
+		printf("Imposible obtener PATH del sistema\n");
+		return;
+	}
+
+	aux=strdup(p);
+	p=strtok(aux,":");
+
+	nodo.id = p;
+
+	if((p)!=NULL && !insertItem(nodo,last(*l),l))
+		printf("Imposible anadir %s: %s\n", p, strerror(errno));
+
+	while((p=strtok(NULL,":"))!=NULL) {
+		nodo.id = p;
+		if (!insertItem(nodo,last(*l),l)) {
+			printf("Imposible anadir %s: %s\n", p, strerror(errno));
+		}
+	}
+
+	free(aux);
+}
+
+char *searchExec(tList l, char ejec[]){
+	static char aux[MAXNOMBRE];
+	int i;
+	struct stat s;
+
+	if (ejec==NULL)
+		return NULL;
+	if (ejec[0]=='/' || !strncmp(ejec,"./",2) || !strncmp(ejec,"../",2)) {
+		if(stat(ejec,&s)!=-1)
+			return ejec;
+		else
+			return NULL;
+	}
+	for(i=0; l.Array[i].id != NULL; i++) {
+		sprintf(aux, "%s/%s", (char *)l.Array[i].id, ejec);
+		if(stat(aux,&s)!=-1)
+			return aux;
+	}
+	return NULL;
+}
+
+int cmd_searchList(container *c){
+
+	int i;
+	char aux[256];
+	tNodo nodo={};
+
+	switch(c->nargs){
+		case 1:
+			if(!strcmp(c->flags[0],"searchlist"))
+				for(i=0; i<(c->searchList.fin); i++)
+					printf(" %s\n",((char*)c->searchList.Array[i].id));
+			break;
+		case 2:
+			switch(c->flags[1][0]){
+				case '-':
+					if(!strcmp("-path",c->flags[1])){
+						addPathSearchList(&c->searchList);
+					} else {
+						return COMANDO_INVALIDO;
+					}
+					break;
+				case '+':
+					strcpy(aux, &c->flags[1][1]);
+					strcpy(nodo.id,aux);
+					strcpy(nodo.dato,"");
+					insertItem(nodo,last(c->searchList),&c->searchList);
+					break;
+				default:
+					printf("%s", searchExec( c->lista, c->flags[1]));
+					break;
+			}
+			break;
+		default:
+			return COMANDO_INVALIDO;
+	}
+	return 0;
+}
+
+int cmd_exec(container *c){
+
+	int PID;
+	int i;
+
+
+	return 0;
+}
+
+int cmd_prog(container *c){
+
+	int PID;
+	int i;
+	int status;
+	char *args[c->nargs -2];
+
+	for(i=0; i<c->nargs-2; i++){
+		args[i] =  c->flags[i+2];
+	}
+
+	switch(PID = fork()) {
+
+		case -1:
+			perror("fallo en fork");
+			return ERROR_FORK;
+		case 0:
+			if(execv(c->flags[1],c->flags)==-1){
+				perror("fallo en exec");
+			}
+			break;
+		default:
+			while (wait(&status) != PID);
+			if(status == 0){
+				printf("Ejecución normal del hijo\n");
+			} else {
+				printf("Error del hijo\n");
+			}
+			break;
+	}
+
+	return 0;
+}
+
+void freeList(container *c){
+
+	tPosL pos = first(c->lista);
 	tNodo aux;
 
-	while(!isEmptyList(*l)){
+	while(!isEmptyList(c->lista)){
 		if(pos != NIL){
-			aux = getItem(pos,*l);
-			deallocateAux(l, pos, aux, ((tDato *)aux.dato)->tipo);
+			aux = getItem(pos,c->lista);
+			deallocateAux(&c->lista, pos, aux, ((tDato *)aux.dato)->tipo);
 		}
-		pos = next(pos,*l);
+		pos = next(pos,c->lista);
 	}
+
+	free(c->lista.Array);
+	free(c->searchList.Array);
 	printf(" Bye !\n");
 }
 
 int cmd_exit(container *c) {
-	freeList(&c->lista);
+	freeList(c);
 	return 1;
 }
 
@@ -1122,6 +1265,9 @@ struct{
 		{"recursivefunction", cmd_recursiveFunction},
 		{"read", cmd_read},
 		{"write", cmd_write},
+		{"setpriority", cmd_setPriority},
+		{"searchlist", cmd_searchList},
+		{"prog", cmd_prog},
 		{"exit",cmd_exit},
 		{"end",cmd_exit},
 		{"fin",cmd_exit},
@@ -1155,13 +1301,16 @@ int procesarEntrada(char *cadena, container *c){
 int main() {
 
 	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File",
-						  "ERROR Deleting Directory","ERROR Listing","ERROR Inserting", "ERROR IPC", "ERROR Reading "};
+						  "ERROR Deleting Directory","ERROR Listing","ERROR Inserting", "ERROR IPC",
+						  "ERROR Reading", "ERROR Fork"};
 	clear();
 	char *entrada ;
 	container c;
 	int salir = 0;
 	entrada = malloc(1024);
-	createEmptyList(&c.lista);
+	createEmptyList(&c.lista, MAXALLOC);
+	createEmptyList(&c.searchList,MAXSEARCHLIST);
+
 
 	while (salir<=0) {
 		imprimirPrompt();
@@ -1171,5 +1320,5 @@ int main() {
 			printf("%s",ERROR_MESAGES[abs(salir)]);
 	}
 	free(entrada);
-	return 0;
+
 }

@@ -1,5 +1,4 @@
 
-#define MAX 4096
 #define NIL -1
 
 typedef struct {
@@ -10,11 +9,12 @@ typedef struct {
 typedef int tPosL;
 
 typedef struct {
-	tNodo Array[MAX];
+	int MAX;
+	tNodo *Array;
 	tPosL fin;
 }tList;
 
-void createEmptyList(tList* list);
+void createEmptyList(tList* list, int tam);
 int isEmptyList (tList list);
 tPosL first (tList list);
 tPosL last (tList list);

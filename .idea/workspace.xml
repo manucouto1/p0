@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="BookmarkManager">
+    <bookmark url="file://$PROJECT_DIR$/../AlgoritmosP3/dicotomia/dicotomia.c" description="void sortCotas(cota_t *cotas, int nCotas, int punt..." line="113" />
+  </component>
   <component name="CMakeRunConfigurationManager" shouldGenerate="true" shouldDeleteObsolete="true" buildAllGenerated="true">
     <generated>
       <config projectName="p0" targetName="main" />
@@ -12,7 +15,16 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ad3a48cb-8dd3-4daa-a8f4-ce981cdc94d0" name="Default Changelist" comment="" />
+    <list default="true" id="ad3a48cb-8dd3-4daa-a8f4-ce981cdc94d0" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/main.dir/list.c.o" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/main.dir/list.c.o" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/main.dir/main.c.o" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/main.dir/main.c.o" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/main.exe" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/main.exe" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmake-build-debug/main.exe.stackdump" beforeDir="false" afterPath="$PROJECT_DIR$/cmake-build-debug/main.exe.stackdump" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/list.c" beforeDir="false" afterPath="$PROJECT_DIR$/list.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/list.h" beforeDir="false" afterPath="$PROJECT_DIR$/list.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.c" beforeDir="false" afterPath="$PROJECT_DIR$/main.c" afterDir="false" />
+    </list>
     <ignored path="$PROJECT_DIR$/cmake-build-debug/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -39,25 +51,26 @@
     <session id="-122388181">
       <usages-collector id="statistics.lifecycle.project">
         <counts>
-          <entry key="project.closed" value="14" />
-          <entry key="project.open.time.0" value="8" />
-          <entry key="project.open.time.1" value="1" />
-          <entry key="project.open.time.2" value="1" />
+          <entry key="project.closed" value="19" />
+          <entry key="project.open.time.0" value="10" />
+          <entry key="project.open.time.1" value="2" />
+          <entry key="project.open.time.2" value="2" />
+          <entry key="project.open.time.3" value="1" />
           <entry key="project.open.time.4" value="1" />
-          <entry key="project.open.time.5" value="3" />
-          <entry key="project.open.time.6" value="4" />
-          <entry key="project.open.time.7" value="1" />
-          <entry key="project.open.time.8" value="3" />
-          <entry key="project.open.time.9" value="1" />
-          <entry key="project.opened" value="23" />
+          <entry key="project.open.time.5" value="4" />
+          <entry key="project.open.time.6" value="5" />
+          <entry key="project.open.time.7" value="2" />
+          <entry key="project.open.time.8" value="4" />
+          <entry key="project.open.time.9" value="2" />
+          <entry key="project.opened" value="33" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
-          <entry key="GDB" value="5071" />
-          <entry key="c" value="35955" />
+          <entry key="GDB" value="5078" />
+          <entry key="c" value="40166" />
           <entry key="cc" value="5" />
-          <entry key="h" value="854" />
+          <entry key="h" value="878" />
           <entry key="m" value="1" />
           <entry key="main (disassembly)" value="2" />
           <entry key="txt" value="56" />
@@ -67,8 +80,8 @@
         <counts>
           <entry key="CMakeLists.txt" value="46" />
           <entry key="Disassembly" value="2" />
-          <entry key="GDBCommands" value="5071" />
-          <entry key="ObjectiveC" value="36815" />
+          <entry key="GDBCommands" value="5078" />
+          <entry key="ObjectiveC" value="41050" />
           <entry key="PLAIN_TEXT" value="10" />
         </counts>
       </usages-collector>
@@ -76,7 +89,8 @@
         <counts>
           <entry key="CMakeLists.txt" value="3" />
           <entry key="Disassembly" value="34" />
-          <entry key="ObjectiveC" value="48" />
+          <entry key="ObjectiveC" value="49" />
+          <entry key="PLAIN_TEXT" value="1" />
           <entry key="Scratch" value="1" />
         </counts>
       </usages-collector>
@@ -87,9 +101,10 @@
           <entry key="c" value="6" />
           <entry key="cc" value="24" />
           <entry key="cpp" value="1" />
-          <entry key="h" value="18" />
+          <entry key="h" value="19" />
           <entry key="main (disassembly)" value="14" />
           <entry key="p0 (disassembly)" value="20" />
+          <entry key="prog" value="1" />
           <entry key="txt" value="3" />
         </counts>
       </usages-collector>
@@ -103,8 +118,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/list.c">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="935">
-              <caret line="55" column="6" selection-start-line="55" selection-start-column="6" selection-end-line="55" selection-end-column="6" />
+            <state relative-caret-position="646">
+              <caret line="38" column="4" selection-start-line="38" selection-start-column="4" selection-end-line="38" selection-end-column="4" />
               <folding>
                 <element signature="e#0#17#0" expanded="true" />
               </folding>
@@ -124,8 +139,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/list.h">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="119">
-              <caret line="7" column="8" selection-start-line="7" selection-start-column="8" selection-end-line="7" selection-end-column="8" />
+            <state relative-caret-position="374">
+              <caret line="22" column="10" selection-start-line="22" selection-start-column="10" selection-end-line="22" selection-end-column="10" />
             </state>
           </provider>
         </entry>
@@ -133,8 +148,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/main.c">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="185">
-              <caret line="1071" column="48" lean-forward="true" selection-start-line="1071" selection-start-column="48" selection-end-line="1071" selection-end-column="48" />
+            <state relative-caret-position="2154">
+              <caret line="1313" lean-forward="true" selection-start-line="1313" selection-end-line="1313" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -142,22 +157,15 @@
           </provider>
         </entry>
       </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/cmake-build-debug/prog">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
     </leaf>
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>allocate</find>
-      <find>print</find>
-      <find>dealloc</find>
-      <find>tMapl</find>
-      <find>deallocateAux</find>
-      <find>find</find>
-      <find>item</find>
-      <find>cmd_m</find>
-      <find>localt</find>
-      <find>local</find>
-      <find>s</find>
-      <find>strftime</find>
       <find>cmd_mm</find>
       <find>strTol</find>
       <find>str</find>
@@ -172,10 +180,22 @@
       <find>cmd_alloc</find>
       <find>strtoll</find>
       <find>error</find>
-      <find>freeList</find>
       <find>valor</find>
       <find>read</find>
       <find>cmd_read</find>
+      <find>%l</find>
+      <find>sprin</find>
+      <find>time</find>
+      <find>print</find>
+      <find>write</find>
+      <find>cmd_write</find>
+      <find>MAX</find>
+      <find>list</find>
+      <find>freeL</find>
+      <find>freeList</find>
+      <find>Nodo(</find>
+      <find>Nodo</find>
+      <find>createN</find>
     </findStrings>
     <replaceStrings>
       <replace>strcpy</replace>
@@ -203,10 +223,10 @@
     <sorting>DEFINITION_ORDER</sorting>
   </component>
   <component name="OCFindUsagesOptions" text="true" ivars="false" properties="true" derivedClasses="false" />
-  <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="1270" />
-    <option name="width" value="1298" />
-    <option name="height" value="1389" />
+  <component name="ProjectFrameBounds">
+    <option name="x" value="1269" />
+    <option name="width" value="1302" />
+    <option name="height" value="1392" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectView">
@@ -214,12 +234,18 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
             <path>
               <item name="p0" type="b2602c69:ProjectViewProjectNode" />
               <item name="p0" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="p0" type="b2602c69:ProjectViewProjectNode" />
+              <item name="p0" type="462c0819:PsiDirectoryNode" />
+              <item name="cmake-build-debug" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="p0" type="b2602c69:ProjectViewProjectNode" />
@@ -234,12 +260,11 @@
           <select />
         </subPane>
       </pane>
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../AlgoritmosP3" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="nodejs_interpreter_path.stuck_in_default_project" value="undefined stuck path" />
     <property name="nodejs_npm_path_reset_for_default_project" value="true" />
     <property name="settings.editor.selected.configurable" value="CPPToolchains" />
@@ -304,7 +329,17 @@
       <workItem from="1541783016312" duration="26880000" />
       <workItem from="1542037947500" duration="3974000" />
       <workItem from="1542181136947" duration="3179000" />
-      <workItem from="1542229612418" duration="961000" />
+      <workItem from="1542229612418" duration="4184000" />
+      <workItem from="1542535999026" duration="598000" />
+      <workItem from="1542559372454" duration="306000" />
+      <workItem from="1542560036437" duration="4000" />
+      <workItem from="1542655541266" duration="3000" />
+      <workItem from="1542802369462" duration="547000" />
+      <workItem from="1543393060900" duration="7228000" />
+      <workItem from="1543873008688" duration="599000" />
+      <workItem from="1543995331216" duration="11933000" />
+      <workItem from="1544032627716" duration="1514000" />
+      <workItem from="1544034938487" duration="1683000" />
     </task>
     <task id="LOCAL-00001" summary="Commit 1">
       <created>1538560475699</created>
@@ -569,7 +604,7 @@
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="302790000" />
+    <option name="totallyTimeSpent" value="330428000" />
   </component>
   <component name="TodoView">
     <todo-panel id="selected-file">
@@ -581,24 +616,23 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="-7" y="-7" width="1721" height="935" extended-state="6" />
-    <editor active="true" />
+    <frame x="846" y="0" width="868" height="928" extended-state="0" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.46978557" visible="true" weight="0.1396749" />
-      <window_info id="Structure" order="1" sideWeight="0.5302144" side_tool="true" visible="true" weight="0.1396749" />
+      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.45321637" visible="true" weight="0.074257426" />
+      <window_info id="Structure" order="1" sideWeight="0.5467836" side_tool="true" visible="true" weight="0.074257426" />
       <window_info id="Favorites" order="2" sideWeight="0.51989025" side_tool="true" weight="0.3298217" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info anchor="bottom" id="Run" order="2" sideWeight="0.53762794" weight="0.5317559" />
-      <window_info anchor="bottom" id="Debug" order="3" sideWeight="0.6845274" weight="0.0" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.7673267" visible="true" weight="0.5703518" />
+      <window_info anchor="bottom" id="Debug" order="3" sideWeight="0.68277574" weight="0.32955974" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" sideWeight="0.6993517" weight="0.19858713" />
       <window_info anchor="bottom" id="Database Changes" order="7" show_stripe_button="false" />
-      <window_info anchor="bottom" id="Messages" order="8" sideWeight="0.49668875" weight="0.43088418" />
+      <window_info anchor="bottom" id="Messages" order="8" sideWeight="0.76856434" weight="0.42839196" />
       <window_info anchor="bottom" id="Terminal" order="9" sideWeight="0.4972178" weight="0.15510522" />
-      <window_info anchor="bottom" id="Event Log" order="10" sideWeight="0.5346177" side_tool="true" visible="true" weight="0.3611457" />
-      <window_info active="true" anchor="bottom" id="Version Control" order="11" sideWeight="0.4653823" visible="true" weight="0.3611457" />
+      <window_info anchor="bottom" id="Event Log" order="10" sideWeight="0.23267327" side_tool="true" visible="true" weight="0.5703518" />
+      <window_info anchor="bottom" id="Version Control" order="11" sideWeight="0.45695364" weight="0.06351183" />
       <window_info anchor="bottom" id="CMake" order="12" sideWeight="0.5087297" weight="0.2403487" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
@@ -621,25 +655,6 @@
     <option name="LAST_COMMIT_MESSAGE" value="Merge branch 'master' of https://github.com/manucouto1/p0&#10;&#10;# Conflicts:&#10;#&#9;main.c" />
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/main.c</url>
-          <line>560</line>
-          <option name="timeStamp" value="47" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/main.c</url>
-          <line>638</line>
-          <option name="timeStamp" value="49" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/main.c</url>
-          <line>612</line>
-          <option name="timeStamp" value="52" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
     <watches-manager>
       <configuration name="CMakeRunConfiguration">
         <watch expression="elements_description" />
@@ -785,13 +800,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://C:/cygwin64/usr/include/sys/unistd.h">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="251">
-          <caret line="94" column="8" selection-start-line="94" selection-start-column="8" selection-end-line="94" selection-end-column="8" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://C:/cygwin64/usr/src/debug/cygwin-2.11.1-1/winsup/cygwin/fhandler_console.cc">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="17">
@@ -806,10 +814,17 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://C:/cygwin64/usr/include/sys/unistd.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="251">
+          <caret line="244" column="24" selection-start-line="244" selection-start-column="24" selection-end-line="244" selection-end-column="24" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/list.c">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="935">
-          <caret line="55" column="6" selection-start-line="55" selection-start-column="6" selection-end-line="55" selection-end-column="6" />
+        <state relative-caret-position="646">
+          <caret line="38" column="4" selection-start-line="38" selection-start-column="4" selection-end-line="38" selection-end-column="4" />
           <folding>
             <element signature="e#0#17#0" expanded="true" />
           </folding>
@@ -825,15 +840,18 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/list.h">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="119">
-          <caret line="7" column="8" selection-start-line="7" selection-start-column="8" selection-end-line="7" selection-end-column="8" />
+        <state relative-caret-position="374">
+          <caret line="22" column="10" selection-start-line="22" selection-start-column="10" selection-end-line="22" selection-end-column="10" />
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/cmake-build-debug/prog">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
     <entry file="file://$PROJECT_DIR$/main.c">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="185">
-          <caret line="1071" column="48" lean-forward="true" selection-start-line="1071" selection-start-column="48" selection-end-line="1071" selection-end-column="48" />
+        <state relative-caret-position="2154">
+          <caret line="1313" lean-forward="true" selection-start-line="1313" selection-end-line="1313" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>
