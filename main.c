@@ -38,10 +38,11 @@
 
 #define clear() printf("\033[H\033[J")
 
-typedef enum { mallocc = 0, mmapp = 1, shared = 2} tType;
+typedef enum {mallocc = 0, mmapp = 1, shared = 2} tType;
+typedef enum {running = 0, stopped = 1, termNormally = 2, termBySignal = 3} tTypeProc;
 
 typedef struct {
-	tList lista;
+	tList lista, listaBackground;
 	int nargs;
 	char *flags[1024];
 }container;
@@ -61,6 +62,14 @@ typedef struct {
 typedef struct {
 	key_t key;
 }tShared;
+
+typedef struct {
+	int prioridad;
+	char *comando;
+	char *fechaInicio;
+	tTypeProc status;
+	void* valorProc;
+} tProcess;
 
 struct element_description{
 	uintmax_t nInodo;
@@ -1113,6 +1122,14 @@ int cmd_exec(container* c) {
 	}
 
 	return 0;
+}
+
+int cmd_background(container* c) {
+	if (c->nargs < 2)
+		return COMANDO_INVALIDO;
+	else {
+
+	}
 }
 
 void freeList(tList *l){
