@@ -6,6 +6,14 @@
 
 #IncludeRegexTransform: 
 
+/home/vic/Escritorio/pso/P1/list.c
+list.h
+/home/vic/Escritorio/pso/P1/list.h
+stdio.h
+-
+memory.h
+-
+
 /home/vic/Escritorio/pso/P1/list.h
 
 /home/vic/Escritorio/pso/P1/main.c
