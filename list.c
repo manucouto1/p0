@@ -1,8 +1,12 @@
 #include "list.h"
 #include <stdio.h>
 #include <memory.h>
+#include <stdlib.h>
 
-void createEmptyList(tList* l) {
+
+void createEmptyList(tList* l, int tam) {
+	l->MAX = tam;
+	l->Array = malloc(tam* sizeof(tNodo));
 	l->fin = NIL;
 }
 
@@ -35,7 +39,7 @@ tPosL next(tPosL p, tList l) {
 int insertItem (tNodo item, tPosL pos, tList* l) {
 	tPosL i;
 
-	if (l->fin == MAX) {
+	if (l->fin == l->MAX) {
 		return 0;
 	}
 	else {

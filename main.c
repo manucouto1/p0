@@ -23,6 +23,7 @@
 #include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
+#include <wait.h>
 
 #include "list.h"
 
@@ -33,16 +34,23 @@
 #define ERROR_LISTING -5
 #define ERROR_INSERT -6
 #define ERROR_IPC -7
+#define ERROR_READING -8
+#define ERROR_FORK -9
 
-#define LEERCOMPLETO ((ssize_t)-1)
 
 #define clear() printf("\033[H\033[J")
+
+#define MAXSEARCHLIST 128
+#define MAXNOMBRE 1024
+#define MAXALLOC 4096
 
 typedef enum {mallocc = 0, mmapp = 1, shared = 2} tType;
 typedef enum {running = 0, stopped = 1, termNormally = 2, termBySignal = 3} tTypeProc;
 
 typedef struct {
-	tList lista, listaBackground;
+	tList lista;
+	tList searchList;
+	tList listaBackground;
 	int nargs;
 	char *flags[1024];
 }container;
@@ -395,7 +403,7 @@ int load_data(char *element, struct element_description *description){
 			description->size = ftell(file);
 		}
 		fclose(file);
-			//printf("\t %s %d %d:%d ", tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min);
+		//printf("\t %s %d %d:%d ", tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min);
 	} else {
 		printf("cannot access %s: %s\n",element, strerror(errno));
 		return 0;
@@ -439,7 +447,7 @@ int cmd_query(container* c) {
 		}
 	}
 
- 	return 0;
+	return 0;
 }
 
 int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int argR, int argN){
@@ -593,15 +601,15 @@ int cmd_mmap (char* arg[], tNodo* nodo) {
 
 	if ((perm = arg[3]) != NULL && strlen(perm) < 4) {
 		if (strchr(perm, 'r') != NULL) protection|=PROT_READ;
-		if (strchr(perm, 'w') != NULL) protection|=PROT_READ;
-		if (strchr(perm, 'x') != NULL) protection|=PROT_READ;
+		if (strchr(perm, 'w') != NULL) protection|=PROT_WRITE;
+		if (strchr(perm, 'x') != NULL) protection|=PROT_EXEC;
 	}
 
 	if ((nodo->id = MmapFichero(arg[2], protection, nodo)) == NULL) {
 		perror("Imposible mapear fichero");
 		return 0;
-	}
-	else printf("fichero %s mapeado en %p\n", arg[2], nodo->id);
+	} else
+		printf ("fichero %s mapeado en %p\n", arg[0], nodo->id);
 	return 1;
 }
 
@@ -644,6 +652,7 @@ void * ObtenerMemoriaShmget (key_t clave, off_t tam, tNodo* nodo) {
 	((tDato *)nodo->dato)->size = s.shm_segsz;
 	return (p);
 }
+
 int AllocCreateShared (char* arg[], tNodo *nodo) {
 	key_t k;
 	off_t tam = 0;
@@ -792,7 +801,7 @@ int compare(tNodo nodo, void* p, tType type) {
 void searchDealloc (tType type, auxDealloc aux, tList* l) {
 	int i, b = 0;
 	i = first(*l);
-	tNodo nodo;
+	tNodo nodo = {};
 
 	if (!isEmptyList(*l)) {
 		while ((i != NIL) && !b) {
@@ -813,7 +822,7 @@ void searchDealloc (tType type, auxDealloc aux, tList* l) {
 int cmd_deallocate (container* c){
 	tNodo nodo;
 	tPosL i;
-	auxDealloc aux;
+	auxDealloc aux = {};
 
 	switch (c->nargs) {
 		case 1:
@@ -965,27 +974,27 @@ int cmd_recursiveFunction (container *c){
 	return 0;
 }
 
-ssize_t LeerFichero (char *fich, void *p, ssize_t n) {
+#define LEERCOMPLETO ((ssize_t)-1)
+ssize_t LeerFichero (char *fich, void *p, ssize_t n) { /*n=-1 indica que se lea t_odo */
 
-	ssize_t nleidos,tam=n;
+	ssize_t nleidos, tam = n;
 	int df, aux;
 	struct stat s;
 
-	if (stat (fich,&s)==-1 || (df=open(fich,O_RDONLY))==-1)
+	if(stat (fich, &s)==-1||(df=open(fich, O_RDONLY))==-1)
 		return ((ssize_t)-1);
 
 	if (n==LEERCOMPLETO)
 		tam=(ssize_t) s.st_size;
 
-	if ((nleidos=read(df,p,(size_t) tam))==-1){
-		aux=errno;
+	if ((nleidos = read(df,p,(size_t)tam))==-1){
+		aux = errno;
 		close(df);
-		errno=aux;
-		return ((ssize_t)-1);
+		errno = aux;
+		return ((size_t)-1);
 	}
-
 	close (df);
-	return (nleidos);
+	return nleidos;
 }
 
 int cmd_read (container *c){
@@ -1088,8 +1097,91 @@ int cmd_fork(container *c) {
 	return 0;
 }
 
-char* searchExec(tList lista, char* ejecutable) {
-	return NULL; //TODO Implementar
+void addPathSearchList(tList *l){
+	tNodo nodo;
+	char *aux;
+	char *p;
+
+	if ((p=getenv("PATH"))==NULL){
+		printf("Imposible obtener PATH del sistema\n");
+		return;
+	}
+
+	aux=strdup(p);
+	p=strtok(aux,":");
+
+	nodo.id = p;
+
+	if((p)!=NULL && !insertItem(nodo,last(*l),l))
+		printf("Imposible anadir %s: %s\n", p, strerror(errno));
+
+	while((p=strtok(NULL,":"))!=NULL) {
+		nodo.id = p;
+		if (!insertItem(nodo,last(*l),l)) {
+			printf("Imposible anadir %s: %s\n", p, strerror(errno));
+		}
+	}
+
+	free(aux);
+}
+
+char *searchExec(tList l, char ejec[]){
+	static char aux[MAXNOMBRE];
+	int i;
+	struct stat s;
+
+	if (ejec==NULL)
+		return NULL;
+	if (ejec[0]=='/' || !strncmp(ejec,"./",2) || !strncmp(ejec,"../",2)) {
+		if(stat(ejec,&s)!=-1)
+			return ejec;
+		else
+			return NULL;
+	}
+	for(i=0; l.Array[i].id != NULL; i++) {
+		sprintf(aux, "%s/%s", (char *)l.Array[i].id, ejec);
+		if(stat(aux,&s)!=-1)
+			return aux;
+	}
+	return NULL;
+}
+
+int cmd_searchList(container *c){
+
+	int i;
+	char aux[256];
+	tNodo nodo={};
+
+	switch(c->nargs){
+		case 1:
+			if(!strcmp(c->flags[0],"searchlist"))
+				for(i=0; i<(c->searchList.fin); i++)
+					printf(" %s\n",((char*)c->searchList.Array[i].id));
+			break;
+		case 2:
+			switch(c->flags[1][0]){
+				case '-':
+					if(!strcmp("-path",c->flags[1])){
+						addPathSearchList(&c->searchList);
+					} else {
+						return COMANDO_INVALIDO;
+					}
+					break;
+				case '+':
+					strcpy(aux, &c->flags[1][1]);
+					strcpy(nodo.id,aux);
+					strcpy(nodo.dato,"");
+					insertItem(nodo,last(c->searchList),&c->searchList);
+					break;
+				default:
+					printf("%s", searchExec( c->lista, c->flags[1]));
+					break;
+			}
+			break;
+		default:
+			return COMANDO_INVALIDO;
+	}
+	return 0;
 }
 
 int cmd_exec(container* c) {
@@ -1124,31 +1216,69 @@ int cmd_exec(container* c) {
 	return 0;
 }
 
+int cmd_prog(container *c){
+
+	int PID;
+	int i;
+	int status;
+	char *args[c->nargs -2];
+
+	for(i=0; i<c->nargs-2; i++){
+		args[i] =  c->flags[i+2];
+	}
+
+	switch(PID = fork()) {
+
+		case -1:
+			perror("fallo en fork");
+			return ERROR_FORK;
+		case 0:
+			if(execv(c->flags[1],c->flags)==-1){
+				perror("fallo en exec");
+			}
+			break;
+		default:
+			while (wait(&status) != PID);
+			if(status == 0){
+				printf("Ejecución normal del hijo\n");
+			} else {
+				printf("Error del hijo\n");
+			}
+			break;
+	}
+
+	return 0;
+}
+
 int cmd_background(container* c) {
 	if (c->nargs < 2)
 		return COMANDO_INVALIDO;
 	else {
 
 	}
+	return 0;
 }
 
-void freeList(tList *l){
+void freeList(container *c){
 
-	tPosL pos = first(*l);
+	tPosL pos = first(c->lista);
 	tNodo aux;
 
-	while(!isEmptyList(*l)){
+	while(!isEmptyList(c->lista)){
 		if(pos != NIL){
-			aux = getItem(pos,*l);
-			deallocateAux(l, aux, pos, ((tDato *)aux.dato)->tipo);
+			aux = getItem(pos,c->lista);
+			deallocateAux(&c->lista, aux, pos, ((tDato *)aux.dato)->tipo);
 		}
-		pos = next(pos,*l);
+		pos = next(pos,c->lista);
 	}
+
+	free(c->lista.Array);
+	free(c->searchList.Array);
 	printf(" Bye !\n");
 }
 
 int cmd_exit(container *c) {
-	freeList(&c->lista);
+	freeList(c);
 	return 1;
 }
 
@@ -1173,12 +1303,14 @@ struct{
 		{"recursivefunction", cmd_recursiveFunction},
 		{"read", cmd_read},
 		{"write", cmd_write},
+		{"setpriority", cmd_setpriority},
+		{"fork", cmd_fork},
+		{"searchlist", cmd_searchList},
+		{"exec", cmd_exec},
+		{"prog", cmd_prog},
 		{"exit",cmd_exit},
 		{"end",cmd_exit},
 		{"fin",cmd_exit},
-		{"setpriority", cmd_setpriority},
-		{"fork", cmd_fork},
-		{"exec", cmd_exec},
 		{NULL, NULL}
 };
 
@@ -1203,13 +1335,16 @@ int procesarEntrada(char *cadena, container *c){
 int main() {
 
 	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File",
-						  "ERROR Deleting Directory","ERROR Listing","ERROR Inserting", "ERROR IPC"};
+	                         "ERROR Deleting Directory","ERROR Listing","ERROR Inserting", "ERROR IPC",
+	                         "ERROR Reading", "ERROR Fork"};
 	clear();
 	char *entrada ;
 	container c;
 	int salir = 0;
 	entrada = malloc(1024);
-	createEmptyList(&c.lista);
+	createEmptyList(&c.lista, MAXALLOC);
+	createEmptyList(&c.searchList,MAXSEARCHLIST);
+
 
 	while (salir<=0) {
 		imprimirPrompt();
@@ -1219,5 +1354,5 @@ int main() {
 			printf("%s",ERROR_MESAGES[abs(salir)]);
 	}
 	free(entrada);
-	return 0;
+
 }
