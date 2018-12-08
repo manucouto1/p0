@@ -93,3 +93,11 @@ void updateItem (tList* l, tPosL p, tNodo nodo) {
 tNodo getItem (tPosL p, tList l) {
 	return l.Array[p];
 }
+
+int copyList(tList *list1, tList list2){
+
+	list1->fin = list2.fin;
+	list1->MAX = list2.MAX;
+	memcpy(list1->Array,list2.Array, sizeof(tNodo) * list2.MAX);
+	return 0;
+}

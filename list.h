@@ -25,3 +25,4 @@ tPosL findItem(char *id, tList list);
 void deleteAtPosition (tPosL pos, tList* list);
 void updateItem(tList* list, tPosL pos, tNodo nodo);
 tNodo getItem (tPosL pos, tList list);
+int copyList(tList *list1, tList list2);

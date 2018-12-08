@@ -43,7 +43,7 @@ typedef struct {
 	tList lista;
 	tList searchList;
 	int nargs;
-	char *flags[1024];
+	char *flags[256];
 }container;
 
 typedef struct {
@@ -1088,7 +1088,73 @@ int cmd_write (container *c){
 }
 
 int cmd_setPriority(container *c){
+	id_t pid;
+	int priority;
+	errno = 0; //Necesario para procesamiento de error con getpriority
+
+	switch (c->nargs) {
+		case 2:
+			pid = (id_t) strtoimax(c->flags[1], NULL, 10);
+			priority = getpriority(PRIO_PROCESS, pid);
+			if (!errno)
+				printf("Priority of process %d: %d\n", pid, priority);
+			else
+				perror("Cannot get priority");
+			break;
+		case 3:
+			pid = (id_t) strtoimax(c->flags[1], NULL, 10);
+			priority = (int) strtoimax(c->flags[2], NULL, 10);
+			if (setpriority(PRIO_PROCESS, pid, priority) == 0)
+				printf("Priority of process %d changed to: %d\n", pid, priority);
+			else
+				perror("Cannot set priority");
+			break;
+		default:
+			return COMANDO_INVALIDO;
+	}
 	return 0;
+}
+
+int cmd_fork(container *c){
+
+	pid_t PID;
+	int status;
+	int return_signal;
+
+	if(c->nargs == 1){
+		switch(PID = fork()) {
+
+			case -1:
+				perror("fallo en fork");
+				return ERROR_FORK;
+			default:
+				waitpid(PID, &status, 0);
+
+				if(WIFEXITED(status)){
+					return_signal = WEXITSTATUS(status);
+					printf("Exit proceso hijo estado: %d\n",return_signal);
+				} else if(WIFSIGNALED(status)){
+					return_signal =WTERMSIG(status);
+					printf("Proceso hijo estado: %d\n",return_signal);
+				} else if(WIFSTOPPED(status)){
+					return_signal = WSTOPSIG(status);
+					printf("Proceso hijo parado estado: %d\n",return_signal);
+				} else if(WIFCONTINUED(status)){
+					//return_signal = WCONTINUED(status);
+					printf("Ejecución normal del hijo\n");
+				} else {
+					printf("Error del hijo\n");
+					return 0;
+				}
+
+
+				break;
+		}
+		return 0;
+	}else {
+		return COMANDO_INVALIDO;
+	}
+
 }
 
 void addPathSearchList(tList *l){
@@ -1134,8 +1200,10 @@ char *searchExec(tList l, char ejec[]){
 	}
 	for(i=0; l.Array[i].id != NULL; i++) {
 		sprintf(aux, "%s/%s", (char *)l.Array[i].id, ejec);
-		if(stat(aux,&s)!=-1)
+
+		if(stat(aux,&s)!=-1) {
 			return aux;
+		}
 	}
 	return NULL;
 }
@@ -1145,12 +1213,16 @@ int cmd_searchList(container *c){
 	int i;
 	char aux[256];
 	tNodo nodo={};
+	nodo.id = malloc(sizeof(char*[256]));
+	nodo.dato = malloc(sizeof(char)*2);
 
 	switch(c->nargs){
 		case 1:
-			if(!strcmp(c->flags[0],"searchlist"))
-				for(i=0; i<(c->searchList.fin); i++)
-					printf(" %s\n",((char*)c->searchList.Array[i].id));
+			if(!strcmp(c->flags[0],"searchlist")) {
+				for (i = 0; i < (c->searchList.fin); i++) {
+					printf(" %s\n", ((char *) c->searchList.Array[i].id));
+				}
+			}
 			break;
 		case 2:
 			switch(c->flags[1][0]){
@@ -1168,7 +1240,7 @@ int cmd_searchList(container *c){
 					insertItem(nodo,last(c->searchList),&c->searchList);
 					break;
 				default:
-					printf("%s", searchExec( c->lista, c->flags[1]));
+					printf("%s", searchExec( c->searchList, c->flags[1]));
 					break;
 			}
 			break;
@@ -1179,24 +1251,62 @@ int cmd_searchList(container *c){
 }
 
 int cmd_exec(container *c){
+	int numFlags = c->nargs - 2;
+	char *pathExec;
+	int prioridad;
+	char* flagsExec[numFlags];
 
-	int PID;
-	int i;
+	if (c->nargs < 2)
+		return COMANDO_INVALIDO;
+	else {
 
+		for (int i = 0; i < numFlags - 1; i++) {
+			strcpy(flagsExec[i], c->flags[i + 2]);
+		}
+
+		if (c->flags[c->nargs - 1][0] != '@') {
+			strcpy(flagsExec[numFlags - 1], c->flags[c->nargs - 1]); //El último parámetro no es la prioridad
+		} else {
+			prioridad = (int) strtoimax(&c->flags[c->nargs - 1][1], NULL, 10);
+			setpriority(PRIO_PROCESS, (id_t) getpid(), prioridad);
+		}
+
+		printf("ALL good");
+
+		pathExec = searchExec(c->lista, c->flags[1]);
+
+		if (pathExec == NULL)
+			printf("Imposible ejecutar %s: No se ha encontrado el fichero\n", c->flags[1]);
+		else if (execv(pathExec, flagsExec) == -1) {
+			perror("No se ha podido ejecutar el fichero");
+		}
+
+	}
 
 	return 0;
 }
 
 int cmd_prog(container *c){
 
-	int PID;
-	int i;
+	pid_t PID;
 	int status;
-	char *args[c->nargs -2];
+	int return_signal;
+	char **shared_flags;
+	tList *shared_searchlist;
+	int *shared_nargs;
+	int i;
+	tPosL pos;
 
-	for(i=0; i<c->nargs-2; i++){
-		args[i] =  c->flags[i+2];
-	}
+	strcpy(c->flags[0],"exec");
+	// TODO - Utilizar el comando cmd_sharedMemory para compartir datos antes del fork
+	shared_flags = mmap(NULL, sizeof(char*[256]), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+	memcpy(shared_flags,c->flags, sizeof(char*[256]));
+
+	//shared_searchlist = mmap(NULL, sizeof(tList), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+	//copyList(shared_searchlist, c->searchList);
+
+	shared_nargs = mmap(NULL, sizeof(int), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+	*shared_nargs = c->nargs;
 
 	switch(PID = fork()) {
 
@@ -1204,16 +1314,37 @@ int cmd_prog(container *c){
 			perror("fallo en fork");
 			return ERROR_FORK;
 		case 0:
-			if(execv(c->flags[1],c->flags)==-1){
-				perror("fallo en exec");
+			memcpy(&c->flags,shared_flags, sizeof(char*[256]));
+			c->nargs = *shared_nargs;
+
+			for(i=0; i< c->nargs; i++) {
+				strcpy(c->flags[i], shared_flags[i]);
+				printf("arg %d -> %s\n", i, c->flags[i]);
 			}
+			cmd_exec(c);
 			break;
 		default:
-			while (wait(&status) != PID);
-			if(status == 0){
+			waitpid(PID, &status, 0);
+
+			if(WIFEXITED(status)){
+				return_signal = WEXITSTATUS(status);
+				printf("Exit proceso hijo estado: %d\n",return_signal);
+			} else if(WIFSIGNALED(status)){
+				return_signal =WTERMSIG(status);
+				printf("Proceso estado: %d\n",return_signal);
+			} else if(WIFSTOPPED(status)){
+				return_signal = WSTOPSIG(status);
+				printf("Proceso hijo parado estado: %d\n",return_signal);
+			} else if(WIFCONTINUED(status)){
+				//return_signal = WCONTINUED(status);
 				printf("Ejecución normal del hijo\n");
 			} else {
 				printf("Error del hijo\n");
+				munmap(shared_flags, sizeof(char*[256]));
+				munmap(shared_nargs, sizeof(tList));
+				//munmap(shared_searchlist, sizeof(int));
+
+				return 0;
 			}
 			break;
 	}
@@ -1236,7 +1367,7 @@ void freeList(container *c){
 
 	free(c->lista.Array);
 	free(c->searchList.Array);
-	printf(" Bye !\n");
+	printf("Bye !\n");
 }
 
 int cmd_exit(container *c) {
@@ -1266,8 +1397,10 @@ struct{
 		{"read", cmd_read},
 		{"write", cmd_write},
 		{"setpriority", cmd_setPriority},
+		{"fork", cmd_fork},
 		{"searchlist", cmd_searchList},
 		{"prog", cmd_prog},
+		{"exec", cmd_exec},
 		{"exit",cmd_exit},
 		{"end",cmd_exit},
 		{"fin",cmd_exit},
