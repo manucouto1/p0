@@ -1185,32 +1185,39 @@ int cmd_searchList(container *c){
 }
 
 int cmd_exec(container* c) {
-	int numFlags = c->nargs - 2;
-	char *pathExec;
 	int prioridad;
-	char* flagsExec[numFlags];
+	char *flagsExec[c->nargs];
+
+	for (int i = 0; i < c->nargs-1; i++) {
+		flagsExec[i] = malloc(256);
+	}
+	flagsExec[c->nargs-1] = NULL;
 
 	if (c->nargs < 2)
 		return COMANDO_INVALIDO;
 	else {
-		for (int i = 0; i < numFlags - 1; i++) {
-			strcpy(flagsExec[i], c->flags[i + 2]);
+		for (int i = 0; i < c->nargs-1; i++) {
+			strcpy(flagsExec[i], c->flags[i + 1]);
 		}
 
-		if (c->flags[c->nargs - 1][0] != '@') {
-			strcpy(flagsExec[numFlags - 1], c->flags[c->nargs - 1]); //El último parámetro no es la prioridad
-		} else {
+		if (c->flags[c->nargs - 1][0] == '@') {
 			prioridad = (int) strtoimax(&c->flags[c->nargs - 1][1], NULL, 10);
 			setpriority(PRIO_PROCESS, (id_t) getpid(), prioridad);
+			flagsExec[c->nargs-2] = NULL;
 		}
 
-		pathExec = searchExec(c->lista, c->flags[1]);
+		flagsExec[0] = searchExec(c->searchList, c->flags[1]);
 
-		if (pathExec == NULL)
+		if (flagsExec[0] == NULL)
 			printf("Imposible ejecutar %s: No se ha encontrado el fichero\n", c->flags[1]);
-		else if (execv(pathExec, flagsExec) == -1) {
+		else if (execv(flagsExec[0], flagsExec) == -1) {
 			perror("No se ha podido ejecutar el fichero");
 		}
+	}
+
+	for (int i = 0; i < c->nargs; i++) {
+		if (flagsExec[i] != NULL)
+			free(flagsExec[i]);
 	}
 
 	return 0;
