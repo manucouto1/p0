@@ -68,7 +68,10 @@ tPosL findItem (char *id, tList l) {
 			sprintf(aux1,"%p", l.Array[p].id);
 			if (!strcmp(aux1,id)) {
 				b = 1;
-			} else p = next(p, l);
+			} else if(!strcmp(l.Array[p].id,id))
+				b = 1;
+			else
+				p = next(p, l);
 		}
 		return p;
 	}

@@ -1144,13 +1144,21 @@ void addPathSearchList(tList *l){
 
 	nodo.id = p;
 
-	if((p)!=NULL && !insertItem(nodo,last(*l),l))
-		printf("Imposible anadir %s: %s\n", p, strerror(errno));
+	if(findItem(p,*l) == NIL) {
+		if ((p) != NULL && !insertItem(nodo, last(*l), l)) {
+			printf("Imposible anadir %s: %s\n", p, strerror(errno));
+		}
+	} else
+		printf("El elemento %s ya esta en la lista \n", p);
 
 	while((p=strtok(NULL,":"))!=NULL) {
 		nodo.id = p;
-		if (!insertItem(nodo,last(*l),l)) {
-			printf("Imposible anadir %s: %s\n", p, strerror(errno));
+		if(findItem(p,*l) == NIL) {
+			if (!insertItem(nodo, last(*l), l)) {
+				printf("Imposible anadir %s: %s\n", p, strerror(errno));
+			}
+		} else {
+			printf("El elemento %s ya esta en la lista \n", p);
 		}
 	}
 
@@ -1209,7 +1217,8 @@ int cmd_searchList(container *c){
 					strcpy(aux, &c->flags[1][1]);
 					strcpy(nodo.id,aux);
 					strcpy(nodo.dato,"");
-					insertItem(nodo,last(c->searchList),&c->searchList);
+					if(findItem(aux,c->searchList) != NIL)
+						insertItem(nodo,last(c->searchList),&c->searchList);
 					break;
 				default:
 					printf("%s", searchExec( c->searchList, c->flags[1]));
