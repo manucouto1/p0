@@ -1217,7 +1217,7 @@ int cmd_searchList(container *c){
 					strcpy(aux, &c->flags[1][1]);
 					strcpy(nodo.id,aux);
 					strcpy(nodo.dato,"");
-					if(findItem(aux,c->searchList) != NIL)
+					if(findItem(aux,c->searchList) == NIL)
 						insertItem(nodo,last(c->searchList),&c->searchList);
 					break;
 				default:
