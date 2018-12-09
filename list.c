@@ -2,12 +2,15 @@
 #include <stdio.h>
 #include <memory.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 
-void createEmptyList(tList* l, int tam) {
+void createEmptyList(tList* l, int tam, tIdType tId) {
+
 	l->MAX = tam;
 	l->Array = malloc(tam* sizeof(tNodo));
 	l->fin = NIL;
+	l->tId = tId;
 }
 
 int isEmptyList(tList l) {
@@ -65,13 +68,23 @@ tPosL findItem (char *id, tList l) {
 	if (!isEmptyList(l)) {
 		p = first(l);
 		while ((p != NIL) && !b) {
-			sprintf(aux1,"%p", l.Array[p].id);
-			if (!strcmp(aux1,id)) {
-				b = 1;
-			} else if(!strcmp(l.Array[p].id,id))
-				b = 1;
-			else
-				p = next(p, l);
+			switch (l.tId){
+				case 0:
+					sprintf(aux1,"%"PRIxPTR"", (intptr_t ) l.Array[p].id);
+					b = (!strcmp(aux1,id));
+					break;
+				case 1:
+					//sprintf(aux1,"%s", (char *) l.Array[p].id );
+					b = (!strcmp(l.Array[p].id,id));
+					break;
+				case 2:
+				default:
+					sprintf(aux1,"%p", l.Array[p].id);
+					b = (!strcmp(aux1,id));
+					break;
+			}
+
+			if(!b) p = next(p, l);
 		}
 		return p;
 	}
@@ -101,6 +114,7 @@ int copyList(tList *list1, tList list2){
 
 	list1->fin = list2.fin;
 	list1->MAX = list2.MAX;
-	memcpy(list1->Array,list2.Array, sizeof(tNodo) * list2.MAX);
+	list1->tId = list2.tId;
+	list1->Array = list2.Array;
 	return 0;
 }

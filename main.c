@@ -679,7 +679,6 @@ int AllocCreateShared (char* arg[], tNodo *nodo) {
 void createNodo (tNodo* nodo, tType type) {
 	time_t t;
 	time(&t);
-	struct tm *s;
 
 	nodo->dato = malloc(sizeof(tDato));
 	((tDato *)nodo->dato)->extra = malloc(300); //sizeof(void *) da problemas con valgrind
@@ -1270,17 +1269,16 @@ int cmd_prog(container *c){
 	tList *shared_searchlist;
 	int *shared_nargs;
 	int i;
-	tPosL pos;
 
 	strcpy(c->flags[0],"exec");
-	// TODO - Utilizar el comando cmd_sharedMemory para compartir datos antes del fork
-	shared_flags = mmap(NULL, sizeof(char*[256]), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
-	memcpy(shared_flags,c->flags, sizeof(char*[256]));
 
-	//shared_searchlist = mmap(NULL, sizeof(tList), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
-	//copyList(shared_searchlist, c->searchList);
+	shared_flags = mmap(NULL, sizeof(c->flags), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+	memcpy(shared_flags,c->flags, sizeof(c->flags));
 
-	shared_nargs = mmap(NULL, sizeof(int), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+	shared_searchlist = mmap(NULL, sizeof(c->searchList), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+	copyList(shared_searchlist, c->searchList);
+
+	shared_nargs = mmap(NULL, sizeof(c->nargs), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
 	*shared_nargs = c->nargs;
 
 	switch(PID = fork()) {
@@ -1291,11 +1289,12 @@ int cmd_prog(container *c){
 		case 0:
 			memcpy(&c->flags,shared_flags, sizeof(char*[256]));
 			c->nargs = *shared_nargs;
-
+			printf(" nargs -> %d\n",c->nargs);
 			for(i=0; i< c->nargs; i++) {
 				strcpy(c->flags[i], shared_flags[i]);
 				printf("arg %d -> %s\n", i, c->flags[i]);
 			}
+			copyList(&c->searchList, *shared_searchlist);
 			cmd_exec(c);
 			break;
 		default:
@@ -1317,7 +1316,7 @@ int cmd_prog(container *c){
 				printf("Error del hijo\n");
 				munmap(shared_flags, sizeof(char*[256]));
 				munmap(shared_nargs, sizeof(tList));
-				//munmap(shared_searchlist, sizeof(int));
+				munmap(shared_searchlist, sizeof(int));
 
 				return 0;
 			}
@@ -1419,8 +1418,8 @@ int main() {
 	container c;
 	int salir = 0;
 	entrada = malloc(1024);
-	createEmptyList(&c.lista, MAXALLOC);
-	createEmptyList(&c.searchList,MAXSEARCHLIST);
+	createEmptyList(&c.lista, MAXALLOC, pVointer);
+	createEmptyList(&c.searchList, MAXSEARCHLIST, sVtring);
 
 	while (salir<=0) {
 		imprimirPrompt();
