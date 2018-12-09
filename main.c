@@ -1068,7 +1068,7 @@ int cmd_write (container *c){
 int cmd_setPriority (container *c) {
 	id_t pid;
 	int priority;
-	errno = 0; //Necesario para procesamiento de error con getpriority
+	errno = 0;
 
 	switch (c->nargs) {
 		case 2:
@@ -1119,7 +1119,7 @@ int cmd_fork(container *c){
 				//return_signal = WCONTINUED(status);
 				printf("Ejecución normal del hijo\n");
 			} else {
-				printf("Error del hijo\n");
+				printf("Proceso hijo PID: %d \n",status);
 			}
 		}
 		return 0;
@@ -1193,6 +1193,7 @@ int cmd_searchList(container *c){
 	int i;
 	char aux[256];
 	tNodo nodo={};
+
 	nodo.id = malloc(sizeof(char*[256]));
 	nodo.dato = malloc(sizeof(char)*2);
 
@@ -1235,16 +1236,11 @@ int cmd_exec(container* c) {
 	int prioridad;
 	char *flagsExec[c->nargs];
 
-	for (int i = 0; i < c->nargs-1; i++) {
-		flagsExec[i] = malloc(256);
-	}
-	flagsExec[c->nargs-1] = NULL;
-
 	if (c->nargs < 2)
 		return COMANDO_INVALIDO;
 	else {
 		for (int i = 0; i < c->nargs-1; i++) {
-			strcpy(flagsExec[i], c->flags[i + 1]);
+			flagsExec[i] = c->flags[i + 1];
 		}
 
 		if (c->flags[c->nargs - 1][0] == '@') {
@@ -1260,11 +1256,6 @@ int cmd_exec(container* c) {
 		else if (execv(flagsExec[0], flagsExec) == -1) {
 			perror("No se ha podido ejecutar el fichero");
 		}
-	}
-
-	for (int i = 0; i < c->nargs; i++) {
-		if (flagsExec[i] != NULL)
-			free(flagsExec[i]);
 	}
 
 	return 0;
@@ -1430,7 +1421,6 @@ int main() {
 	entrada = malloc(1024);
 	createEmptyList(&c.lista, MAXALLOC);
 	createEmptyList(&c.searchList,MAXSEARCHLIST);
-
 
 	while (salir<=0) {
 		imprimirPrompt();
