@@ -1265,21 +1265,22 @@ int cmd_prog(container *c){
 	pid_t PID;
 	int status;
 	int return_signal;
-	char **shared_flags;
-	tList *shared_searchlist;
-	int *shared_nargs;
+
+	void *shared_flags;
+	void *shared_searchlist;
+	void *shared_nargs;
 	int i;
 
 	strcpy(c->flags[0],"exec");
 
-	shared_flags = mmap(NULL, sizeof(c->flags), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+	shared_flags =  mmap(NULL, sizeof(c->flags), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
 	memcpy(shared_flags,c->flags, sizeof(c->flags));
 
 	shared_searchlist = mmap(NULL, sizeof(c->searchList), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
 	copyList(shared_searchlist, c->searchList);
 
-	shared_nargs = mmap(NULL, sizeof(c->nargs), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
-	*shared_nargs = c->nargs;
+	shared_nargs = (int *) mmap(NULL, sizeof(c->nargs), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+	*((int *)shared_nargs) = c->nargs;
 
 	switch(PID = fork()) {
 
@@ -1288,13 +1289,16 @@ int cmd_prog(container *c){
 			return ERROR_FORK;
 		case 0:
 			memcpy(&c->flags,shared_flags, sizeof(char*[256]));
-			c->nargs = *shared_nargs;
+			c->nargs = *((int *)shared_nargs);
+
 			printf(" nargs -> %d\n",c->nargs);
+
 			for(i=0; i< c->nargs; i++) {
-				strcpy(c->flags[i], shared_flags[i]);
+				strcpy(c->flags[i], ((char **)shared_flags)[i]);
+
 				printf("arg %d -> %s\n", i, c->flags[i]);
 			}
-			copyList(&c->searchList, *shared_searchlist);
+			copyList(&c->searchList, *((tList *)shared_searchlist));
 			cmd_exec(c);
 			break;
 		default:
