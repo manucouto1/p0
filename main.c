@@ -1122,33 +1122,27 @@ int cmd_fork(container *c){
 	int return_signal;
 
 	if(c->nargs == 1){
-		switch(PID = fork()) {
+		if(PID = fork()==-1) {
+			perror("fallo en fork");
+			return ERROR_FORK;
+		} else {
+			waitpid(PID, &status, 0);
 
-			case -1:
-				perror("fallo en fork");
-				return ERROR_FORK;
-			default:
-				waitpid(PID, &status, 0);
-
-				if(WIFEXITED(status)){
-					return_signal = WEXITSTATUS(status);
-					printf("Exit proceso hijo estado: %d\n",return_signal);
-				} else if(WIFSIGNALED(status)){
-					return_signal =WTERMSIG(status);
-					printf("Proceso hijo estado: %d\n",return_signal);
-				} else if(WIFSTOPPED(status)){
-					return_signal = WSTOPSIG(status);
-					printf("Proceso hijo parado estado: %d\n",return_signal);
-				} else if(WIFCONTINUED(status)){
-					//return_signal = WCONTINUED(status);
-					printf("Ejecución normal del hijo\n");
-				} else {
-					printf("Error del hijo\n");
-					return 0;
-				}
-
-
-				break;
+			if(WIFEXITED(status)){
+				return_signal = WEXITSTATUS(status);
+				printf("Exit proceso hijo estado: %d\n",return_signal);
+			} else if(WIFSIGNALED(status)){
+				return_signal =WTERMSIG(status);
+				printf("Proceso hijo estado: %d\n",return_signal);
+			} else if(WIFSTOPPED(status)){
+				return_signal = WSTOPSIG(status);
+				printf("Proceso hijo parado estado: %d\n",return_signal);
+			} else if(WIFCONTINUED(status)){
+				//return_signal = WCONTINUED(status);
+				printf("Ejecución normal del hijo\n");
+			} else {
+				printf("Error del hijo\n");
+			}
 		}
 		return 0;
 	}else {
@@ -1264,16 +1258,17 @@ int cmd_exec(container *c){
 			strcpy(flagsExec[i], c->flags[i + 2]);
 		}
 
+		/*
 		if (c->flags[c->nargs - 1][0] != '@') {
 			strcpy(flagsExec[numFlags - 1], c->flags[c->nargs - 1]); //El último parámetro no es la prioridad
 		} else {
 			prioridad = (int) strtoimax(&c->flags[c->nargs - 1][1], NULL, 10);
 			setpriority(PRIO_PROCESS, (id_t) getpid(), prioridad);
 		}
-
+		*/
 		printf("ALL good");
 
-		pathExec = searchExec(c->lista, c->flags[1]);
+		pathExec = searchExec(c->searchList, c->flags[1]);
 
 		if (pathExec == NULL)
 			printf("Imposible ejecutar %s: No se ha encontrado el fichero\n", c->flags[1]);
