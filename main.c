@@ -1,3 +1,8 @@
+/*
+ * Autores:
+ * Manuel Couto Pintos, login: manuel.couto1@udc.es, DNI: 77462284D
+ * Víctor Escudero González, login: v.escudero@udc.es, DNI: 54153242H
+ */
 #include <stdio.h>
 #include <memory.h>
 #include <stdlib.h>
@@ -16,6 +21,8 @@
 #include <sys/shm.h>
 #include <ctype.h>
 #include <sys/mman.h>
+#include <sys/resource.h>
+#include <sys/wait.h>
 #include <wait.h>
 
 #include "list.h"
@@ -37,11 +44,13 @@
 #define MAXNOMBRE 1024
 #define MAXALLOC 4096
 
-typedef enum { mallocc = 0, mmapp = 1, shared = 2} tType;
+typedef enum {mallocc = 0, mmapp = 1, shared = 2} tType;
+typedef enum {running = 0, stopped = 1, termNormally = 2, termBySignal = 3} tTypeProc;
 
 typedef struct {
 	tList lista;
 	tList searchList;
+	tList listaBackground;
 	int nargs;
 	char *flags[256];
 }container;
@@ -61,6 +70,14 @@ typedef struct {
 typedef struct {
 	key_t key;
 }tShared;
+
+typedef struct {
+	int prioridad;
+	char *comando;
+	char *fechaInicio;
+	tTypeProc status;
+	void* valorProc;
+} tProcess;
 
 struct element_description{
 	uintmax_t nInodo;
@@ -441,16 +458,15 @@ int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int
 	char current[1024];
 	getcwd(current, 1024);
 
-	if ((nivel<=1) || argR) {
+	if ((nivel<1) || argR) {
 		if (S_ISDIR(path_stat.st_mode)) {
 			if ((dir = opendir(elemento)) != NULL) {
-				nivel++;
 				chdir(elemento);
 				while ((ent = readdir(dir)) != NULL) {
 					if (strcmp(ent->d_name, ".")!=0 && strcmp(ent->d_name, "..")!=0) {
 						lstat(ent->d_name, &path_stat);
 						if (!(!argH && (ent->d_name[0] == '.'))) {
-							fun_list_rec(ent->d_name, path_stat, nivel, argH, argR, argN);
+							fun_list_rec(ent->d_name, path_stat, nivel++, argH, argR, argN);
 						}
 					}
 				}
@@ -589,12 +605,10 @@ int cmd_mmap (char* arg[], tNodo* nodo) {
 	char* perm;
 	int protection = 0;
 
-	protection = (int) strtol(arg[3],NULL,10);
-
-	if ((perm=arg[3])!=NULL && strlen(perm)<4) {
-		if (strchr(perm,'r')!=NULL) protection|=PROT_READ;
-		if (strchr(perm,'w')!=NULL) protection|=PROT_WRITE;
-		if (strchr(perm,'x')!=NULL) protection|=PROT_EXEC;
+	if ((perm = arg[3]) != NULL && strlen(perm) < 4) {
+		if (strchr(perm, 'r') != NULL) protection|=PROT_READ;
+		if (strchr(perm, 'w') != NULL) protection|=PROT_WRITE;
+		if (strchr(perm, 'x') != NULL) protection|=PROT_EXEC;
 	}
 
 	if ((nodo->id = MmapFichero(arg[2], protection, nodo)) == NULL) {
@@ -605,9 +619,9 @@ int cmd_mmap (char* arg[], tNodo* nodo) {
 	return 1;
 }
 
-void *ObtenerMemoriaMalloc(char *flags,tNodo *nodo) {
+void *ObtenerMemoriaMalloc(char *size,tNodo *nodo) {
 	// Inicializando
-	size_t allocSize = (unsigned long) strtol(flags,NULL,10);
+	size_t allocSize = (unsigned long) strtol(size,NULL,10);
 	nodo -> id = malloc(allocSize);
 	// General data
 	((tDato*) nodo -> dato) -> tipo = mallocc;
@@ -654,7 +668,9 @@ int AllocCreateShared (char* arg[], tNodo *nodo) {
 	if ((nodo->id = ObtenerMemoriaShmget(k,tam)) == NULL) //Se pasa nodo para conseguir el tamaño en caso de -shared
 		perror ("Imposible obtener memoria shmget");
 	else {
+		printf("Memoria de shmeget de clave %d asignada en %p\n", k, nodo->id);
 		((tShared*)((tDato*)nodo->dato)->extra)->key = k;
+		((tDato *)nodo->dato)->size = tam;
 		return 1;
 	}
 	return 0;
@@ -666,12 +682,9 @@ void createNodo (tNodo* nodo, tType type) {
 	struct tm *s;
 
 	nodo->dato = malloc(sizeof(tDato));
-	((tDato *)nodo->dato)->extra = malloc(sizeof(void *));
+	((tDato *)nodo->dato)->extra = malloc(300); //sizeof(void *) da problemas con valgrind
 	((tDato *)nodo->dato)->tipo = type;
-	//strcpy(((tDato *)nodo->dato)->date,asctime(localtime(&t)));
-	// Fecha
-	s = localtime(&t);
-	strftime(((tDato *)nodo->dato)->date, (256 * sizeof(char)), "%c", s);
+	strcpy(((tDato *)nodo->dato)->date,asctime(localtime(&t)));
 }
 
 void freeNodo (tNodo* nodo) {
@@ -679,13 +692,7 @@ void freeNodo (tNodo* nodo) {
 		free((tType*)((tDato*)nodo->dato)->extra);
 	free((tDato*)nodo->dato);
 }
-/*
- * DONE Allocate | reserva memoria y la guarda en la lista, si no se le pasan argumentos muestra los elementos de la lista
- * DONE -malloc [tam] | se le indica el tamaño devuelve la direccion de memoria, sin argumentos lista elementos
- * DONE -mmap fich [perm]
- * TODO -createshared [cl] [tam]
- * TODO -shared [cl]
- */
+
 int cmd_allocate (container* c) {
 	tNodo nodo;
 
@@ -697,7 +704,8 @@ int cmd_allocate (container* c) {
 			if (!strcmp(c->flags[1], "-malloc")) printList(mallocc, c->lista);
 			else if (!strcmp(c->flags[1], "-shared") || !strcmp(c->flags[1], "-createshared")) printList(shared, c->lista);
 			else if (!strcmp(c->flags[1], "-mmap")) printList(mmapp, c->lista);
-			else return COMANDO_INVALIDO;
+			else
+				return COMANDO_INVALIDO;
 			return 0;
 		case 3:
 			if(!strcmp(c->flags[1],"-malloc")) {
@@ -718,7 +726,8 @@ int cmd_allocate (container* c) {
 				if (cmd_mmap(c->flags, &nodo)) {
 					if (!insertItem(nodo, NIL, &c->lista)) return ERROR_INSERT;
 				}
-				else freeNodo(&nodo);
+				else
+					freeNodo(&nodo);
 			}
 			else if (!strcmp(c->flags[1], "-shared")) {
 				createNodo(&nodo, shared);
@@ -731,7 +740,8 @@ int cmd_allocate (container* c) {
 					freeNodo(&nodo);
 					perror("cannot shared");
 				}
-			} else return COMANDO_INVALIDO;
+			} else
+				return COMANDO_INVALIDO;
 			return 0;
 		case 4:
 			if (!strcmp(c->flags[1], "-mmap")) {
@@ -764,7 +774,7 @@ int cmd_allocate (container* c) {
 	}
 }
 
-int deallocateAux(tList *l, tPosL pos, tNodo nodo, tType tipo){
+void deallocateAux (tList* l, tNodo nodo, tPosL pos, tType tipo) {
 	int id;
 	struct shmid_ds buf;
 
@@ -798,7 +808,6 @@ int deallocateAux(tList *l, tPosL pos, tNodo nodo, tType tipo){
 		default:
 			break;
 	}
-	return 0;
 }
 
 int compare(tNodo nodo, void* p, tType type) {
@@ -809,7 +818,6 @@ int compare(tNodo nodo, void* p, tType type) {
 		default: return 0;
 	}
 }
-
 
 void searchDealloc (tType type, auxDealloc aux, tList* l) {
 	int i, b = 0;
@@ -825,16 +833,12 @@ void searchDealloc (tType type, auxDealloc aux, tList* l) {
 				i = next(i, *l);
 		}
 		if (b) {
-			deallocateAux(l, i, nodo, type);
+			deallocateAux(l, nodo, i, type);
 		} else
 			printList(type, *l);
 	}
 }
-/*
- * TODO Deallocate | lobera una de las direcciones de memorias reservadas en la lista, sin argumentos lista las direcciones
- * TODO -malloc [tam] | Se elimina uno de los bloques de tamaño [tam] de la lista, si no hay o no se pasa argumento lista
- * TODO -mmap fich | deshace un mapeo del fichero <-> memoria y borra de lista,
- */
+
 int cmd_deallocate (container* c){
 	tNodo nodo;
 	tPosL i;
@@ -852,7 +856,7 @@ int cmd_deallocate (container* c){
 				i = findItem(c->flags[1], c->lista);
 				if (i != NIL) {
 					nodo = getItem(i, c->lista);
-					deallocateAux(&c->lista, i, nodo, ((tDato*)nodo.dato)->tipo);
+					deallocateAux(&c->lista, nodo, i, ((tDato*)nodo.dato)->tipo);
 				} else
 					printList(-1, c->lista);
 			}
@@ -878,9 +882,6 @@ int cmd_deallocate (container* c){
 	return 0;
 }
 
-/*
- *TODO rmkey cl | Elimina la región de memoria compartida de llave cl. Simplemente es una llamada a shmctl(id, IPC RMID ...)
- */
 int cmd_rmkey (container* c) {
 	key_t clave;
 	int id;
@@ -903,9 +904,7 @@ int cmd_rmkey (container* c) {
 	}
 	else return COMANDO_INVALIDO;
 }
-/*
- *TODO mem | Imprime la dirección de memoria de 3 funciones del programa, tres variables globales y tres variables locales
- */
+
 int cmd_mem (container* c){
 	int local1;
 	int local2;
@@ -914,7 +913,7 @@ int cmd_mem (container* c){
 	if (c->nargs == 1) {
 		printf("Direcciones de memoria de tres funciones del programa:\n");
 		printf("cmd_allocate -> %p\ncmd_deallocate -> %p\ncmd_autores -> %p\n\n", &cmd_allocate, &cmd_deallocate,
-		       &cmd_autores);
+			   &cmd_autores);
 		printf("Direcciones de memoria de variables globales:\n");
 		printf("global1 -> %p\nglobal2 -> %p\nglobal3 -> %p\n\n", &global1, &global2, &global3);
 		printf("Direcciones de memoria de variables locales:\n");
@@ -923,11 +922,7 @@ int cmd_mem (container* c){
 	}
 	else return COMANDO_INVALIDO;
 }
-/*
- * TODO memdump addr | Enseña el contenido de 25 bytes empezando por addr
- * TODO memdump addr [cont] | Enseña el contenido cont bytes empezando por addr
- * Imprime 25 bytes por línea, podría producir segmentation fault
- */
+
 int cmd_memDump (container* c){
 	int cont, j;
 	uintptr_t valor;
@@ -971,19 +966,18 @@ int cmd_memDump (container* c){
 
 	return 0;
 }
-/*
- *
- */
+
 void auxRecursive (int n) {
 	char automatico[1024];
 	static char estatico[1024];
 
-	printf ("parametro n:%d en %p\n",n,&n);
-	printf ("array estatico en: %p \n",&estatico);
-	printf ("array automatico en: %p\n",&automatico);
-	n--;
-
-	if (n>0) auxRecursive(n);
+	if (n > 0) {
+		printf("parametro n:%d en %p\n", n, &n);
+		printf("array estatico en: %p \n", &estatico);
+		printf("array automatico en: %p\n", &automatico);
+		n--;
+		auxRecursive(n);
+	}
 }
 
 int cmd_recursiveFunction (container *c){
@@ -995,7 +989,6 @@ int cmd_recursiveFunction (container *c){
 
 	return 0;
 }
-
 
 #define LEERCOMPLETO ((ssize_t)-1)
 ssize_t LeerFichero (char *fich, void *p, ssize_t n) { /*n=-1 indica que se lea t_odo */
@@ -1020,74 +1013,59 @@ ssize_t LeerFichero (char *fich, void *p, ssize_t n) { /*n=-1 indica que se lea 
 	return nleidos;
 }
 
-/*
- * DONE read fich addr | Lee fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
- * DONE read fich addr cont | Lee cont bytes de fich y guarda el resultado en addr (usando sólo una llamada read al sistema)
- */
 int cmd_read (container *c){
 	int offset = -1;
 	long cont = 0;
 	void *puntero;
-	// Creo que es mejor usar una direccion que hayamos guardado en la lista antes con -malloc
+
 	if(c->nargs == 4 || c->nargs == 3){
 		puntero = (void *) strtol(c->flags[2],NULL,0);
-		if(c->flags[3])
+		if(c->nargs == 4)
 			offset = (int) strtol(c->flags[3], NULL, 10);
 		cont = LeerFichero(c->flags[1], puntero, offset);
-		printf("Read %lu bytes from file %s into %p\n", cont, c->flags[1], puntero);
+		if (cont != -1)
+			printf("Read %lu bytes from file %s into %p\n", cont, c->flags[1], puntero);
+		else
+			printf("cannot read %s: %s\n", c->flags[1], strerror(errno));
 		return 0;
 	} else
 		return COMANDO_INVALIDO;
 }
 
-int EscribirFichero (void *puntero, char *fich, size_t cont) {
-	FILE *fichero;
-	int fd;
-
-	if ((fichero = fopen(fich, "w+")) != NULL) {
-		fd = fileno(fichero);
-		if (write(fd, puntero, cont) != -1) {
-			printf("Written %lu bytes from memory address %p into file %s", cont, puntero, fich);
-		} else
-			printf("cannot write %s: %s\n", fich, strerror(errno));
-		fclose(fichero);
-	} else
-		printf("cannot write %s: %s\n", fich, strerror(errno));
-}
-
-/*
- * TODO write file addr cont [-o] | Escribe cont bytes de addr en file. Si file no existe se crea.
- * TODO Si ya existe, no se sobreescribe a menos que se le pase -o
- */
 int cmd_write (container *c){
-	void *puntero;
-	size_t cont = 0;
+	int fd;
+	size_t cont;
+	uintptr_t valor;
+	uint32_t *puntero;
+	FILE *fichero;
 
-	int fileExists = access(c->flags[1], F_OK);
-
-	if(c->nargs == 4){
-		if(fileExists == -1) {
-			cont = strtoul(c->flags[3],NULL,10);
-			puntero = (void *) strtol(c->flags[2],NULL,0);
-			EscribirFichero(puntero, c->flags[1], cont);
-		} else
-			perror("error: el fichero ya existe, use la opción -o");
-
-	} else if (c -> nargs == 5) {
-		if(!strcmp(c->flags[4],"-o")){
-			cont = strtoul(c->flags[3],NULL,10);
-			puntero = (void *) strtol(c->flags[2],NULL,0);
-			EscribirFichero(puntero,c->flags[1],cont);
-		} else
-			return  COMANDO_INVALIDO;
-
-	} else
+	if(c->nargs == 4 ||c->nargs == 5) {
+		if (access(c->flags[1], F_OK) || (c->flags[4] != NULL && !strcmp(c->flags[4], "-o"))) {
+			valor = strtoul(c->flags[2], NULL, 0);
+			puntero = (void *) valor;
+			cont = strtoul(c->flags[3], NULL, 10);
+			if ((fichero = fopen(c->flags[1], "w+")) != NULL) {
+				fd = fileno(fichero);
+				if (write(fd, puntero, cont) != -1) {
+					printf("Written %lu bytes from memory address %p into file %s", cont, puntero, c->flags[1]);
+				} else
+					printf("cannot write %s: %s\n", c->flags[1], strerror(errno));
+				fclose(fichero);
+			} else
+				printf("cannot write %s: %s\n", c->flags[1], strerror(errno));
+		} else {
+			if (c->nargs == 4)
+				printf("File %s already exists, to overwrite it use -o\n", c->flags[1]);
+			else
+				return COMANDO_INVALIDO;
+		}
+		return 0;
+	}else{
 		return COMANDO_INVALIDO;
-
-	return 0;
+	}
 }
 
-int cmd_setPriority(container *c){
+int cmd_setPriority (container *c) {
 	id_t pid;
 	int priority;
 	errno = 0; //Necesario para procesamiento de error con getpriority
@@ -1122,7 +1100,7 @@ int cmd_fork(container *c){
 	int return_signal;
 
 	if(c->nargs == 1){
-		if(PID = fork()==-1) {
+		if((PID = fork())==-1) {
 			perror("fallo en fork");
 			return ERROR_FORK;
 		} else {
@@ -1244,38 +1222,40 @@ int cmd_searchList(container *c){
 	return 0;
 }
 
-int cmd_exec(container *c){
-	int numFlags = c->nargs - 2;
-	char *pathExec;
+int cmd_exec(container* c) {
 	int prioridad;
-	char* flagsExec[numFlags];
+	char *flagsExec[c->nargs];
+
+	for (int i = 0; i < c->nargs-1; i++) {
+		flagsExec[i] = malloc(256);
+	}
+	flagsExec[c->nargs-1] = NULL;
 
 	if (c->nargs < 2)
 		return COMANDO_INVALIDO;
 	else {
-
-		for (int i = 0; i < numFlags - 1; i++) {
-			strcpy(flagsExec[i], c->flags[i + 2]);
+		for (int i = 0; i < c->nargs-1; i++) {
+			strcpy(flagsExec[i], c->flags[i + 1]);
 		}
 
-		/*
-		if (c->flags[c->nargs - 1][0] != '@') {
-			strcpy(flagsExec[numFlags - 1], c->flags[c->nargs - 1]); //El último parámetro no es la prioridad
-		} else {
+		if (c->flags[c->nargs - 1][0] == '@') {
 			prioridad = (int) strtoimax(&c->flags[c->nargs - 1][1], NULL, 10);
 			setpriority(PRIO_PROCESS, (id_t) getpid(), prioridad);
+			flagsExec[c->nargs-2] = NULL;
 		}
-		*/
-		printf("ALL good");
 
-		pathExec = searchExec(c->searchList, c->flags[1]);
+		flagsExec[0] = searchExec(c->searchList, c->flags[1]);
 
-		if (pathExec == NULL)
+		if (flagsExec[0] == NULL)
 			printf("Imposible ejecutar %s: No se ha encontrado el fichero\n", c->flags[1]);
-		else if (execv(pathExec, flagsExec) == -1) {
+		else if (execv(flagsExec[0], flagsExec) == -1) {
 			perror("No se ha podido ejecutar el fichero");
 		}
+	}
 
+	for (int i = 0; i < c->nargs; i++) {
+		if (flagsExec[i] != NULL)
+			free(flagsExec[i]);
 	}
 
 	return 0;
@@ -1347,6 +1327,15 @@ int cmd_prog(container *c){
 	return 0;
 }
 
+int cmd_background(container* c) {
+	if (c->nargs < 2)
+		return COMANDO_INVALIDO;
+	else {
+
+	}
+	return 0;
+}
+
 void freeList(container *c){
 
 	tPosL pos = first(c->lista);
@@ -1355,7 +1344,7 @@ void freeList(container *c){
 	while(!isEmptyList(c->lista)){
 		if(pos != NIL){
 			aux = getItem(pos,c->lista);
-			deallocateAux(&c->lista, pos, aux, ((tDato *)aux.dato)->tipo);
+			deallocateAux(&c->lista, aux, pos, ((tDato *)aux.dato)->tipo);
 		}
 		pos = next(pos,c->lista);
 	}
@@ -1394,8 +1383,8 @@ struct{
 		{"setpriority", cmd_setPriority},
 		{"fork", cmd_fork},
 		{"searchlist", cmd_searchList},
-		{"prog", cmd_prog},
 		{"exec", cmd_exec},
+		{"prog", cmd_prog},
 		{"exit",cmd_exit},
 		{"end",cmd_exit},
 		{"fin",cmd_exit},
@@ -1420,12 +1409,6 @@ int procesarEntrada(char *cadena, container *c){
 	return 0;
 }
 
-/*
- * DONE - Separar los comandos query y list en dos archivos query.c y list.c
- * DONE - Hacer que el programa pueda lidiar con caracteres tipo (*,?,...)
- * DONE - Cunado no se ejecuta el comando de la forma esperada hay que informar al usuarion con un mensaje de error, para cada comando
- * DONE - Revisar lo que comentan en la seccion HELPFUL INFORMATION
- */
 int main() {
 
 	char *ERROR_MESAGES[] = {"","ERROR Comando Invalido","ERROR Creating File","ERROR Deleting File",
