@@ -1089,10 +1089,12 @@ int cmd_setPriority (container *c) {
 int cmd_fork(container *c) {
 	int pid;
 
-	if ((pid = fork()) == 0) {
-	}
-	else
-		waitpid(pid, NULL, 0);
+	if (c->nargs == 1) {
+		if ((pid = fork()) == 0) {
+		} else
+			waitpid(pid, NULL, 0);
+	} else
+		return COMANDO_INVALIDO;
 
 	return 0;
 }
@@ -1154,13 +1156,12 @@ void addPathSearchList(tList *l){
 
 	nodo.id = p;
 
-	if((p)!=NULL && !insertItem(nodo,last(*l),l))
-		printf("Imposible anadir %s: %s\n", p, strerror(errno));
-
 	while((p=strtok(NULL,":"))!=NULL) {
 		nodo.id = p;
-		if (!insertItem(nodo,last(*l),l)) {
-			printf("Imposible anadir %s: %s\n", p, strerror(errno));
+		if (findItem(p, *l) == NIL) {
+			if (!insertItem(nodo, last(*l), l)) {
+				printf("Imposible anadir %s: %s\n", p, strerror(errno));
+			}
 		}
 	}
 

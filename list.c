@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <memory.h>
 #include <stdlib.h>
+#include <errno.h>
 
 
 void createEmptyList(tList* l, int tam) {
@@ -40,6 +41,7 @@ int insertItem (tNodo item, tPosL pos, tList* l) {
 	tPosL i;
 
 	if (l->fin == l->MAX) {
+		errno = ENOSPC;
 		return 0;
 	}
 	else {
