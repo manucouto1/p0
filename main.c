@@ -1391,46 +1391,64 @@ int cmd_clearjobs(container *c){
 
 int cmd_pipe(container *c){
 	int fd[2];
-	pid_t childpid;
+	pid_t pid;
 
 	int i;
 	int aux = 0;
-	char *prog1[256];
+
+	char **prog1 = malloc(sizeof(c->flags));
+	char **prog2 = malloc(sizeof(c->flags));
+
 	int p1Nargs = 0;
-	char *prog2[256];
 	int p2Nargs = 0;
 
-	if(!strcmp("pipe",c->flags[0])) {
-
+	if (!strcmp("pipe",c->flags[0])) {
 		for(i=1; i<c->nargs; i++){
 			if(!aux){
 				if(!strcmp("%",c->flags[i])) {
 					aux = 1;
 				} else {
-					prog1[p1Nargs] = c->flags[i];;
+					prog1[p1Nargs] = malloc(sizeof(char)*256);
+					strcpy(prog1[p1Nargs],c->flags[i]);;
 					p1Nargs++;
 				}
 			} else {
-				prog2[p2Nargs] = c->flags[i];
+				prog2[p2Nargs] = malloc(sizeof(char)*256);
+				strcpy(prog2[p2Nargs],c->flags[i]);
 				p2Nargs++;
 			}
 		}
 
 		pipe(fd);
-		if ((childpid = fork()) == 0) {
+		pid = fork();
+
+		if (pid == 0) {
 			dup2(fd[1], STDOUT_FILENO);
 			close(fd[0]);
 			close(fd[1]);
 			exec_aux(c->searchList,prog1, p1Nargs);
 			perror("Prog 1 falló");
+			exit(0);
 		} else {
-			dup2(fd[0], STDIN_FILENO);
-			close(fd[0]);
-			close(fd[1]);
-			exec_aux(c->searchList,prog2, p2Nargs);
-			perror("Prog 2 falló");
+			pid = fork();
+			if(pid == 0){
+
+				dup2(fd[0], STDIN_FILENO);
+				close(fd[1]);
+				close(fd[0]);
+				exec_aux(c->searchList,prog2, p2Nargs);
+				perror("Prog 2 falló");
+				exit(0);
+			} else {
+				int status;
+				close(fd[0]);
+				close(fd[1]);
+				waitpid(pid,&status,0);
+			}
 		}
-		exit(0);
+		free(prog1);
+		free(prog2);
+		return 0;
 	} else {
 		return COMANDO_INVALIDO;
 	}
@@ -1484,6 +1502,7 @@ struct{
 		{"fork", cmd_fork},
 		{"searchlist", cmd_searchList},
 		{"exec", cmd_exec},
+		{"pipe", cmd_pipe},
 		{"exit",cmd_exit},
 		{"end",cmd_exit},
 		{"fin",cmd_exit},

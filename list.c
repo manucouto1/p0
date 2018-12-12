@@ -121,6 +121,3 @@ int copyList(tList *list1, tList list2){
 	return 0;
 }
 
-void freeList(tList *list) {
-	free(list->Array);
-}
