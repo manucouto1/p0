@@ -1325,7 +1325,7 @@ int cmd_pipe(container *c){
 	int p2Nargs = 0;
 
 	if(!strcmp("pipe",c->flags[0])) {
-		pipe(fd);
+
 		for(i=1; i<c->nargs; i++){
 			if(!aux){
 				if(!strcmp("%"),c->flags[i]) {
@@ -1339,18 +1339,20 @@ int cmd_pipe(container *c){
 				p2Nargs++;
 			}
 		}
+
+		pipe(fd);
 		if ((childpid = fork()) == 0) {
 			dup2(fd[1], STDOUT_FILENO);
 			close(fd[0]);
 			close(fd[1]);
 			exec_aux(c->searchList,prog1, p1Nargs);
-			perror("Exec falló");
+			perror("Prog 1 falló");
 		} else {
 			dup2(fd[0], STDIN_FILENO);
 			close(fd[0]);
 			close(fd[1]);
 			exec_aux(c->searchList,prog2, p2Nargs);
-			perror("Exec falló en sort");
+			perror("Prog 2 falló");
 		}
 		exit(0);
 	} else {
