@@ -1096,7 +1096,7 @@ int cmd_fork(container *c){
 		if((PID = fork())==-1) {
 			perror("fallo en fork");
 			return ERROR_FORK;
-		} else {
+		} else if (PID != 0){
 			waitpid(PID, &status, 0);
 
 			if(WIFEXITED(status)){
