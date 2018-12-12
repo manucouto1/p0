@@ -1081,7 +1081,6 @@ int cmd_setPriority (container *c) {
 		case 3:
 			pid = (id_t) strtoimax(c->flags[1], NULL, 10);
 			priority = (int) strtoimax(c->flags[2], NULL, 10);
-
 			if (setpriority(PRIO_PROCESS, pid, priority) == 0)
 				printf("Priority of process %d changed to: %d\n", pid, priority);
 			else
@@ -1103,7 +1102,7 @@ int cmd_fork(container *c){
 		if((PID = fork())==-1) {
 			perror("fallo en fork");
 			return ERROR_FORK;
-		} else {
+		} else if (PID != 0){
 			waitpid(PID, &status, 0);
 
 			if(WIFEXITED(status)){
