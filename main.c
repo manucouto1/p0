@@ -54,7 +54,6 @@ typedef struct {
 	tList lista;
 	tList searchList;
 	tList listaBackground;
-	tList backgroundProcess;
 	int nargs;
 	char *flags[256];
 }container;
@@ -1305,10 +1304,84 @@ int cmd_prog(container *c){
 
 int cmd_background(container* c) {
 	// TODO Es igual que prog solo que el padre en vez de esperar continua ejecutando
+	int PID;
+	int status;
+	tNodo nodo = {};
+	tDato dato = {};
+
 	if (c->nargs < 2)
 		return COMANDO_INVALIDO;
 	else {
 
+		switch(PID = fork()) {
+
+			case -1:
+				perror("fallo en fork");
+				return ERROR_FORK;
+			case 0:
+				exec_aux(c->searchList,c->flags, c->nargs);
+				exit(0);
+			default:
+
+				if(PID == waitpid(PID, &status, WNOHANG |WUNTRACED | WCONTINUED)){
+
+					if(WIFEXITED(status)){
+						return_signal = WEXITSTATUS(status);
+						printf("Exit proceso hijo estado: %d\n",return_signal);
+					} else if(WIFSIGNALED(status)){
+						return_signal =WTERMSIG(status);
+						printf("Proceso hijo estado: %d\n",return_signal);
+					} else if(WIFSTOPPED(status)){
+						return_signal = WSTOPSIG(status);
+						printf("Proceso hijo parado estado: %d\n",return_signal);
+					} else if(WIFCONTINUED(status)){
+						//return_signal = WCONTINUED(status);
+						printf("Ejecución normal del hijo\n");
+					} else {
+						printf("Proceso hijo PID: %d \n",status);
+					}
+
+					// TODO recopilar información para el tDato
+
+					nodo.id = PID;
+					nodo.dato = dato; //falta definir el struct de p.e -> tBackground
+
+					if(!insertItem(nodo,last(c->listaBackground),c->listaBackground)){
+						// Los free que haya que hacer si falta la inserción
+					}
+				} else {
+					return ERROR_FORK;
+				}
+
+				break;
+		}
+	}
+	return 0;
+}
+
+int cmd_jobs(container *c){
+	tPosL iter;
+
+	if(!isEmptyList(c->listaBackground)){
+		iter = first(c->listaBackground);
+
+		do {
+			printf("%-9d%-19sp=%d%22s%7s",4793,"SIGNALED (SIGKILL)",-1,"Fri Oct 19 2018 12:35 xterm");;//Ejemplo
+		} while ((iter=next(iter,c->listaBackground))!=NIL);
+	}
+	return 0;
+}
+
+int cmd_clearjobs(container *c){
+	tPosL iter = first(c->listaBackground);
+	tNodo aux;
+
+	while(!isEmptyList(c->listaBackground)){
+		aux = getItem(iter,c->listaBackground);
+		free(aux.id);
+		// Supongo que también haremos un struct con la información del proceso
+		// free(aux.dato);
+		deleteAtPosition(ite,c->listaBackground);
 	}
 	return 0;
 }
@@ -1444,7 +1517,7 @@ int main() {
 	entrada = malloc(1024);
 
 	createEmptyList(&c.lista, MAXALLOC, pVointer);
-	createEmptyList(&c.backgroundProcess, MAXBPROCESS, pVointer);
+	createEmptyList(&c.listaBackground, MAXBPROCESS, pVointer);
 	createEmptyList(&c.searchList, MAXSEARCHLIST, sVtring);
 
 	while (salir<=0) {
