@@ -1086,60 +1086,41 @@ int cmd_setPriority (container *c) {
 	return 0;
 }
 
-int cmd_fork(container *c) {
-	int pid;
-
-	if (c->nargs == 1) {
-		if ((pid = fork()) == 0) {
-		} else
-			waitpid(pid, NULL, 0);
-	} else
-		return COMANDO_INVALIDO;
-
-	return 0;
-}
-
-/*int cmd_fork(container *c){
+int cmd_fork(container *c){
 
 	pid_t PID;
 	int status;
 	int return_signal;
 
 	if(c->nargs == 1){
-		switch(PID = fork()) {
+		if((PID = fork())==-1) {
+			perror("fallo en fork");
+			return ERROR_FORK;
+		} else {
+			waitpid(PID, &status, 0);
 
-			case -1:
-				perror("fallo en fork");
-				return ERROR_FORK;
-			default:
-				waitpid(PID, &status, 0);
-
-				if(WIFEXITED(status)){
-					return_signal = WEXITSTATUS(status);
-					printf("Exit proceso hijo estado: %d\n",return_signal);
-				} else if(WIFSIGNALED(status)){
-					return_signal =WTERMSIG(status);
-					printf("Proceso hijo estado: %d\n",return_signal);
-				} else if(WIFSTOPPED(status)){
-					return_signal = WSTOPSIG(status);
-					printf("Proceso hijo parado estado: %d\n",return_signal);
-				} else if(WIFCONTINUED(status)){
-					//return_signal = WCONTINUED(status);
-					printf("Ejecución normal del hijo\n");
-				} else {
-					printf("Error del hijo\n");
-					return 0;
-				}
-
-
-				break;
+			if(WIFEXITED(status)){
+				return_signal = WEXITSTATUS(status);
+				printf("Exit proceso hijo estado: %d\n",return_signal);
+			} else if(WIFSIGNALED(status)){
+				return_signal =WTERMSIG(status);
+				printf("Proceso hijo estado: %d\n",return_signal);
+			} else if(WIFSTOPPED(status)){
+				return_signal = WSTOPSIG(status);
+				printf("Proceso hijo parado estado: %d\n",return_signal);
+			} else if(WIFCONTINUED(status)){
+				//return_signal = WCONTINUED(status);
+				printf("Ejecución normal del hijo\n");
+			} else {
+				printf("Error del hijo\n");
+			}
 		}
 		return 0;
 	}else {
 		return COMANDO_INVALIDO;
 	}
 
-}*/
+}
 
 void addPathSearchList(tList *l){
 	tNodo nodo;
@@ -1156,12 +1137,21 @@ void addPathSearchList(tList *l){
 
 	nodo.id = p;
 
+	if(findItem(p,*l) == NIL) {
+		if ((p) != NULL && !insertItem(nodo, last(*l), l)) {
+			printf("Imposible anadir %s: %s\n", p, strerror(errno));
+		}
+	} else
+		printf("El elemento %s ya esta en la lista \n", p);
+
 	while((p=strtok(NULL,":"))!=NULL) {
 		nodo.id = p;
-		if (findItem(p, *l) == NIL) {
+		if(findItem(p,*l) == NIL) {
 			if (!insertItem(nodo, last(*l), l)) {
 				printf("Imposible anadir %s: %s\n", p, strerror(errno));
 			}
+		} else {
+			printf("El elemento %s ya esta en la lista \n", p);
 		}
 	}
 
@@ -1220,7 +1210,8 @@ int cmd_searchList(container *c){
 					strcpy(aux, &c->flags[1][1]);
 					strcpy(nodo.id,aux);
 					strcpy(nodo.dato,"");
-					insertItem(nodo,last(c->searchList),&c->searchList);
+					if(findItem(aux,c->searchList) == NIL)
+						insertItem(nodo,last(c->searchList),&c->searchList);
 					break;
 				default:
 					printf("%s", searchExec( c->searchList, c->flags[1]));
