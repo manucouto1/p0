@@ -42,8 +42,10 @@
 #define clear() printf("\033[H\033[J")
 
 #define MAXSEARCHLIST 128
+#define MAXBPROCESS 6
 #define MAXNOMBRE 1024
 #define MAXALLOC 4096
+
 
 typedef enum {mallocc = 0, mmapp = 1, shared = 2} tType;
 typedef enum {running = 0, stopped = 1, termNormally = 2, termBySignal = 3} tTypeProc;
@@ -1113,7 +1115,7 @@ int cmd_fork(container *c){
 				//return_signal = WCONTINUED(status);
 				printf("Ejecución normal del hijo\n");
 			} else {
-				printf("Error del hijo\n");
+				printf("Proceso hijo PID: %d \n",status);
 			}
 		}
 		return 0;
@@ -1162,8 +1164,8 @@ void addPathSearchList(tList *l){
 
 char *searchExec(tList l, char ejec[]){
 	static char aux[MAXNOMBRE];
-	int iter;
 	struct stat s;
+	tPosL iter;
 
 	if (ejec==NULL)
 		return NULL;
@@ -1173,16 +1175,15 @@ char *searchExec(tList l, char ejec[]){
 		else
 			return NULL;
 	}
-	if (!isEmptyList(l)) {
+
+	if(!isEmptyList(l)) {
 		iter = first(l);
 		do {
 			sprintf(aux, "%s/%s", (char *) getItem(iter, l).id, ejec);
-
 			if (stat(aux, &s) != -1) {
 				return aux;
 			}
-
-		} while ((iter = next(iter, l)) != NIL);
+		} while ((iter = next(iter, l))!=NIL);
 	}
 
 	return NULL;
@@ -1190,15 +1191,18 @@ char *searchExec(tList l, char ejec[]){
 
 int cmd_searchList(container *c){
 
-	int i;
 	char aux[256];
 	tNodo nodo={};
+	tPosL iter;
 
 	switch(c->nargs){
 		case 1:
 			if(!strcmp(c->flags[0],"searchlist")) {
-				for (i = 0; i < (c->searchList.fin); i++) {
-					printf(" %s\n", ((char *) c->searchList.Array[i].id));
+				if(!isEmptyList(c->searchList)) {
+					iter = first(c->searchList);
+					do {
+						printf(" %s\n", ((char *) getItem(iter, c->searchList).id));
+					} while ((iter = next(iter, c->searchList))!=NIL);
 				}
 			}
 			break;
@@ -1213,16 +1217,16 @@ int cmd_searchList(container *c){
 					break;
 				case '+':
 					nodo.id = malloc(sizeof(char*[256]));
+
 					strcpy(aux, &c->flags[1][1]);
 					strcpy(nodo.id,aux);
-					nodo.dato = NULL;
 
 					if(findItem(aux,c->searchList) == NIL) {
 						if (!insertItem(nodo, last(c->searchList), &c->searchList))
 							free(nodo.id);
-					} else
-						free(nodo.id);
-
+						else
+							free(nodo.id);
+					}
 					break;
 				default:
 					printf("%s", searchExec( c->searchList, c->flags[1]));
@@ -1359,6 +1363,67 @@ int cmd_background(container* c) {
 	}
 }
 
+int cmd_clearjobs(container *c){
+	tPosL iter = first(c->listaBackground);
+	tNodo aux;
+
+	while(!isEmptyList(c->listaBackground)){
+		aux = getItem(iter,c->listaBackground);
+		free(aux.id);
+		// Supongo que también haremos un struct con la información del proceso
+		// free(aux.dato);
+		deleteAtPosition(iter,&c->listaBackground);
+	}
+	return 0;
+}
+
+int cmd_pipe(container *c){
+	int fd[2];
+	pid_t childpid;
+
+	int i;
+	int aux = 0;
+	char *prog1[256];
+	int p1Nargs = 0;
+	char *prog2[256];
+	int p2Nargs = 0;
+
+	if(!strcmp("pipe",c->flags[0])) {
+
+		for(i=1; i<c->nargs; i++){
+			if(!aux){
+				if(!strcmp("%",c->flags[i])) {
+					aux = 1;
+				} else {
+					prog1[p1Nargs] = c->flags[i];;
+					p1Nargs++;
+				}
+			} else {
+				prog2[p2Nargs] = c->flags[i];
+				p2Nargs++;
+			}
+		}
+
+		pipe(fd);
+		if ((childpid = fork()) == 0) {
+			dup2(fd[1], STDOUT_FILENO);
+			close(fd[0]);
+			close(fd[1]);
+			execAux(c->searchList,prog1, p1Nargs);
+			perror("Prog 1 falló");
+		} else {
+			dup2(fd[0], STDIN_FILENO);
+			close(fd[0]);
+			close(fd[1]);
+			execAux(c->searchList,prog2, p2Nargs);
+			perror("Prog 2 falló");
+		}
+		exit(0);
+	} else {
+		return COMANDO_INVALIDO;
+	}
+}
+
 void freeAllocList(tList *l){
 
 	tPosL pos = first(*l);
@@ -1483,9 +1548,10 @@ int main() {
 	container c;
 	int salir = 0;
 	entrada = malloc(1024);
+
 	createEmptyList(&c.lista, MAXALLOC, pVointer);
+	createEmptyList(&c.listaBackground, MAXBPROCESS, pVointer);
 	createEmptyList(&c.searchList, MAXSEARCHLIST, sVtring);
-	createEmptyList(&c.listaBackground, MAXALLOC, iVnteger);
 
 	while (salir<=0) {
 		imprimirPrompt();
