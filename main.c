@@ -1081,6 +1081,7 @@ int cmd_setPriority (container *c) {
 		case 3:
 			pid = (id_t) strtoimax(c->flags[1], NULL, 10);
 			priority = (int) strtoimax(c->flags[2], NULL, 10);
+
 			if (setpriority(PRIO_PROCESS, pid, priority) == 0)
 				printf("Priority of process %d changed to: %d\n", pid, priority);
 			else
@@ -1141,7 +1142,7 @@ void addPathSearchList(tList *l){
 	aux=strdup(p);
 	p=strtok(aux,":");
 
-	nodo.id = p;
+	nodo.id = strdup(p);
 
 	if(findItem(p,*l) == NIL) {
 		if ((p) != NULL && !insertItem(nodo, last(*l), l)) {
@@ -1151,7 +1152,7 @@ void addPathSearchList(tList *l){
 		printf("El elemento %s ya esta en la lista \n", p);
 
 	while((p=strtok(NULL,":"))!=NULL) {
-		nodo.id = p;
+		nodo.id = strdup(p);
 		if(findItem(p,*l) == NIL) {
 			if (!insertItem(nodo, last(*l), l)) {
 				printf("Imposible anadir %s: %s\n", p, strerror(errno));
@@ -1166,8 +1167,8 @@ void addPathSearchList(tList *l){
 
 char *searchExec(tList l, char ejec[]){
 	static char aux[MAXNOMBRE];
-	int i;
 	struct stat s;
+	tPosL iter;
 
 	if (ejec==NULL)
 		return NULL;
@@ -1177,30 +1178,38 @@ char *searchExec(tList l, char ejec[]){
 		else
 			return NULL;
 	}
-	for(i=0; l.Array[i].id != NULL; i++) {
-		sprintf(aux, "%s/%s", (char *)l.Array[i].id, ejec);
 
-		if(stat(aux,&s)!=-1) {
-			return aux;
-		}
+	if(!isEmptyList(l)) {
+
+		iter = first(l);
+
+		do {
+			sprintf(aux, "%s/%s", (char *) getItem(iter, l).id, ejec);
+
+			if (stat(aux, &s) != -1) {
+				return aux;
+			}
+
+		} while ((iter = next(iter, l))!=NIL);
 	}
+
 	return NULL;
 }
 
 int cmd_searchList(container *c){
 
-	int i;
 	char aux[256];
 	tNodo nodo={};
-
-	nodo.id = malloc(sizeof(char*[256]));
-	nodo.dato = malloc(sizeof(char)*2);
+	tPosL iter;
 
 	switch(c->nargs){
 		case 1:
 			if(!strcmp(c->flags[0],"searchlist")) {
-				for (i = 0; i < (c->searchList.fin); i++) {
-					printf(" %s\n", ((char *) c->searchList.Array[i].id));
+				if(!isEmptyList(c->searchList)) {
+					iter = first(c->searchList);
+					do {
+						printf(" %s\n", ((char *) getItem(iter, c->searchList).id));
+					} while ((iter = next(iter, c->searchList))!=NIL);
 				}
 			}
 			break;
@@ -1214,11 +1223,16 @@ int cmd_searchList(container *c){
 					}
 					break;
 				case '+':
+					nodo.id = malloc(sizeof(char*[256]));
+
 					strcpy(aux, &c->flags[1][1]);
 					strcpy(nodo.id,aux);
-					strcpy(nodo.dato,"");
+
 					if(findItem(aux,c->searchList) == NIL)
-						insertItem(nodo,last(c->searchList),&c->searchList);
+						if(!insertItem(nodo,last(c->searchList),&c->searchList))
+							free(nodo.id);
+						else
+							free(nodo.id);
 					break;
 				default:
 					printf("%s", searchExec( c->searchList, c->flags[1]));
@@ -1231,8 +1245,28 @@ int cmd_searchList(container *c){
 	return 0;
 }
 
-int cmd_exec(container* c) {
+void exec_aux(tList list,char *lArgs[], int nargs){
+
+	char * path;
 	int prioridad;
+
+	if (lArgs[nargs - 1][0] == '@') {
+		prioridad = (int) strtoimax(&lArgs[nargs - 1][1], NULL, 10);
+		setpriority(PRIO_PROCESS, (id_t) getpid(), prioridad);
+		lArgs[nargs - 1] = NULL;
+	}
+
+	path = searchExec(list, lArgs[0]);
+
+	if (path == NULL)
+		printf("Imposible ejecutar %s: No se ha encontrado el fichero\n", lArgs[0]);
+	else if (execv(path, lArgs) == -1) {
+		perror("No se ha podido ejecutar el fichero");
+	}
+}
+
+int cmd_exec(container* c) {
+
 	char *flagsExec[c->nargs];
 
 	if (c->nargs < 2)
@@ -1241,20 +1275,9 @@ int cmd_exec(container* c) {
 		for (int i = 0; i < c->nargs-1; i++) {
 			flagsExec[i] = c->flags[i + 1];
 		}
+		flagsExec[c->nargs - 1]=NULL;
 
-		if (c->flags[c->nargs - 1][0] == '@') {
-			prioridad = (int) strtoimax(&c->flags[c->nargs - 1][1], NULL, 10);
-			setpriority(PRIO_PROCESS, (id_t) getpid(), prioridad);
-			flagsExec[c->nargs-2] = NULL;
-		}
-
-		flagsExec[0] = searchExec(c->searchList, c->flags[1]);
-
-		if (flagsExec[0] == NULL)
-			printf("Imposible ejecutar %s: No se ha encontrado el fichero\n", c->flags[1]);
-		else if (execv(flagsExec[0], flagsExec) == -1) {
-			perror("No se ha podido ejecutar el fichero");
-		}
+		exec_aux(c->searchList, flagsExec, c->nargs - 1);
 	}
 
 	return 0;
@@ -1265,22 +1288,7 @@ int cmd_prog(container *c){
 	pid_t PID;
 	int status;
 	int return_signal;
-
-	void *shared_flags;
-	void *shared_searchlist;
-	void *shared_nargs;
 	int i;
-
-	strcpy(c->flags[0],"exec");
-
-	shared_flags =  mmap(NULL, sizeof(c->flags), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
-	memcpy(shared_flags,c->flags, sizeof(c->flags));
-
-	shared_searchlist = mmap(NULL, sizeof(c->searchList), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
-	copyList(shared_searchlist, c->searchList);
-
-	shared_nargs = (int *) mmap(NULL, sizeof(c->nargs), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
-	*((int *)shared_nargs) = c->nargs;
 
 	switch(PID = fork()) {
 
@@ -1288,45 +1296,18 @@ int cmd_prog(container *c){
 			perror("fallo en fork");
 			return ERROR_FORK;
 		case 0:
-			memcpy(&c->flags,shared_flags, sizeof(char*[256]));
-			c->nargs = *((int *)shared_nargs);
-
-			printf(" nargs -> %d\n",c->nargs);
-
-			for(i=0; i< c->nargs; i++) {
-				strcpy(c->flags[i], ((char **)shared_flags)[i]);
-
-				printf("arg %d -> %s\n", i, c->flags[i]);
-			}
-			copyList(&c->searchList, *((tList *)shared_searchlist));
-			cmd_exec(c);
-			break;
+			exec_aux(c->searchList,c->flags, c->nargs);
+			exit(0);
 		default:
 			waitpid(PID, &status, 0);
-
-			if(WIFEXITED(status)){
-				return_signal = WEXITSTATUS(status);
-				printf("Exit proceso hijo estado: %d\n",return_signal);
-			} else if(WIFSIGNALED(status)){
-				return_signal =WTERMSIG(status);
-				printf("Proceso estado: %d\n",return_signal);
-			} else if(WIFSTOPPED(status)){
-				return_signal = WSTOPSIG(status);
-				printf("Proceso hijo parado estado: %d\n",return_signal);
-			} else if(WIFCONTINUED(status)){
-				//return_signal = WCONTINUED(status);
-				printf("Ejecución normal del hijo\n");
-			} else {
-				printf("Error del hijo\n");
-				munmap(shared_flags, sizeof(char*[256]));
-				munmap(shared_nargs, sizeof(tList));
-				munmap(shared_searchlist, sizeof(int));
-
-				return 0;
-			}
 			break;
 	}
 
+	return 0;
+}
+
+int cmd_background(container *c){
+	// TODO Es igual que prog solo que el padre en vez de esperar continua ejecutando
 	return 0;
 }
 
@@ -1387,7 +1368,6 @@ struct{
 		{"fork", cmd_fork},
 		{"searchlist", cmd_searchList},
 		{"exec", cmd_exec},
-		{"prog", cmd_prog},
 		{"exit",cmd_exit},
 		{"end",cmd_exit},
 		{"fin",cmd_exit},
@@ -1401,7 +1381,7 @@ int cmdManager(container* c){
 			return  CMDS[i].CMD_FUN(c);
 		}
 	}
-	return COMANDO_INVALIDO;
+	return cmd_prog(c);
 }
 
 int procesarEntrada(char *cadena, container *c){
