@@ -1228,16 +1228,11 @@ int cmd_exec(container* c) {
 	int prioridad;
 	char *flagsExec[c->nargs];
 
-	for (int i = 0; i < c->nargs-1; i++) {
-		flagsExec[i] = malloc(256);
-	}
-	flagsExec[c->nargs-1] = NULL;
-
 	if (c->nargs < 2)
 		return COMANDO_INVALIDO;
 	else {
 		for (int i = 0; i < c->nargs-1; i++) {
-			strcpy(flagsExec[i], c->flags[i + 1]);
+			flagsExec[i] = c->flags[i + 1];
 		}
 
 		if (c->flags[c->nargs - 1][0] == '@') {
@@ -1255,11 +1250,6 @@ int cmd_exec(container* c) {
 		}
 	}
 
-	for (int i = 0; i < c->nargs; i++) {
-		if (flagsExec[i] != NULL)
-			free(flagsExec[i]);
-	}
-
 	return 0;
 }
 
@@ -1268,22 +1258,22 @@ int cmd_prog(container *c){
 	pid_t PID;
 	int status;
 	int return_signal;
-	char **shared_flags;
-	tList *shared_searchlist;
-	int *shared_nargs;
+
+	void *shared_flags;
+	void *shared_searchlist;
+	void *shared_nargs;
 	int i;
-	tPosL pos;
 
 	strcpy(c->flags[0],"exec");
-	// TODO - Utilizar el comando cmd_sharedMemory para compartir datos antes del fork
-	shared_flags = mmap(NULL, sizeof(char*[256]), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
-	memcpy(shared_flags,c->flags, sizeof(char*[256]));
 
-	//shared_searchlist = mmap(NULL, sizeof(tList), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
-	//copyList(shared_searchlist, c->searchList);
+	shared_flags =  mmap(NULL, sizeof(c->flags), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+	memcpy(shared_flags,c->flags, sizeof(c->flags));
 
-	shared_nargs = mmap(NULL, sizeof(int), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
-	*shared_nargs = c->nargs;
+	shared_searchlist = mmap(NULL, sizeof(c->searchList), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+	copyList(shared_searchlist, c->searchList);
+
+	shared_nargs = (int *) mmap(NULL, sizeof(c->nargs), PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+	*((int *)shared_nargs) = c->nargs;
 
 	switch(PID = fork()) {
 
@@ -1292,12 +1282,16 @@ int cmd_prog(container *c){
 			return ERROR_FORK;
 		case 0:
 			memcpy(&c->flags,shared_flags, sizeof(char*[256]));
-			c->nargs = *shared_nargs;
+			c->nargs = *((int *)shared_nargs);
+
+			printf(" nargs -> %d\n",c->nargs);
 
 			for(i=0; i< c->nargs; i++) {
-				strcpy(c->flags[i], shared_flags[i]);
+				strcpy(c->flags[i], ((char **)shared_flags)[i]);
+
 				printf("arg %d -> %s\n", i, c->flags[i]);
 			}
+			copyList(&c->searchList, *((tList *)shared_searchlist));
 			cmd_exec(c);
 			break;
 		default:
@@ -1319,7 +1313,7 @@ int cmd_prog(container *c){
 				printf("Error del hijo\n");
 				munmap(shared_flags, sizeof(char*[256]));
 				munmap(shared_nargs, sizeof(tList));
-				//munmap(shared_searchlist, sizeof(int));
+				munmap(shared_searchlist, sizeof(int));
 
 				return 0;
 			}
@@ -1421,9 +1415,8 @@ int main() {
 	container c;
 	int salir = 0;
 	entrada = malloc(1024);
-	createEmptyList(&c.lista, MAXALLOC);
-	createEmptyList(&c.searchList,MAXSEARCHLIST);
-
+	createEmptyList(&c.lista, MAXALLOC, pVointer);
+	createEmptyList(&c.searchList, MAXSEARCHLIST, sVtring);
 
 	while (salir<=0) {
 		imprimirPrompt();

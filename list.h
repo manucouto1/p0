@@ -1,5 +1,6 @@
 
 #define NIL -1
+typedef enum {iVnteger = 0, sVtring = 1, pVointer = 2} tIdType;
 
 typedef struct {
 	void *id;
@@ -10,11 +11,12 @@ typedef int tPosL;
 
 typedef struct {
 	int MAX;
+	tIdType tId;
 	tNodo *Array;
 	tPosL fin;
 }tList;
 
-void createEmptyList(tList* list, int tam);
+void createEmptyList(tList* list, int tam, tIdType tId);
 int isEmptyList (tList list);
 tPosL first (tList list);
 tPosL last (tList list);
