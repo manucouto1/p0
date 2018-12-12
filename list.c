@@ -9,7 +9,7 @@
 void createEmptyList(tList* l, int tam, tIdType tId) {
 
 	l->MAX = tam;
-	l->Array = malloc(tam* sizeof(tNodo));
+	l->Array = malloc(tam * sizeof(tNodo));
 	l->fin = NIL;
 	l->tId = tId;
 }
@@ -119,4 +119,8 @@ int copyList(tList *list1, tList list2){
 	list1->tId = list2.tId;
 	list1->Array = list2.Array;
 	return 0;
+}
+
+void freeList(tList *list) {
+	free(list->Array);
 }
