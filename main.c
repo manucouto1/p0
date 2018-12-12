@@ -3,6 +3,7 @@
  * Manuel Couto Pintos, login: manuel.couto1@udc.es, DNI: 77462284D
  * Víctor Escudero González, login: v.escudero@udc.es, DNI: 54153242H
  */
+
 #include <stdio.h>
 #include <memory.h>
 #include <stdlib.h>
@@ -41,8 +42,10 @@
 #define clear() printf("\033[H\033[J")
 
 #define MAXSEARCHLIST 128
+#define MAXBPROCESS 6
 #define MAXNOMBRE 1024
 #define MAXALLOC 4096
+
 
 typedef enum {mallocc = 0, mmapp = 1, shared = 2} tType;
 typedef enum {running = 0, stopped = 1, termNormally = 2, termBySignal = 3} tTypeProc;
@@ -51,6 +54,7 @@ typedef struct {
 	tList lista;
 	tList searchList;
 	tList listaBackground;
+	tList backgroundProcess;
 	int nargs;
 	char *flags[256];
 }container;
@@ -417,8 +421,7 @@ void print_element(struct element_description elements_description, int argN){
 	if (argN) {
 		printf("%8ju ", elements_description.size);
 		printf("%s\n",elements_description.name);
-	}
-	else {
+	} else {
 		printf("%8ju ", elements_description.nInodo);
 		printf("%5s", elements_description.permisos);
 		printf("%3ld ", elements_description.links);
@@ -441,7 +444,7 @@ int cmd_query(container* c) {
 	int i;
 	struct element_description description;
 
-	for(i = 1; i < c->nargs; i++){
+	for (i = 1; i < c->nargs; i++) {
 		if (load_data(c->flags[i], &description)) {
 			print_element(description, 0);
 		}
@@ -473,8 +476,7 @@ int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int
 				closedir(dir);
 				if (!strcmp(elemento, "..")) {
 					chdir(current);
-				}
-				else if (strcmp(elemento, ".")!=0) chdir("..");
+				} else if (strcmp(elemento, ".")!=0) chdir("..");
 			}
 		}
 	}
@@ -591,10 +593,10 @@ void *MmapFichero (char *fichero, int protection, tNodo *nodo){
 		return NULL;
 	if((p=mmap (NULL, (size_t) s.st_size, protection, map, df, 0)) == MAP_FAILED)
 		return NULL;
-	// General data
+
 	nodo->id = p;
 	((tDato*)nodo->dato)->size = (unsigned long) s.st_size;
-	// Especific map data
+
 	strcpy(((tMap *)((tDato *)nodo->dato)->extra)->fichero,fichero);
 	((tMap *)((tDato *)nodo->dato)->extra)->fd = df;
 
@@ -616,6 +618,7 @@ int cmd_mmap (char* arg[], tNodo* nodo) {
 		return 0;
 	} else
 		printf ("fichero %s mapeado en %p\n", arg[0], nodo->id);
+
 	return 1;
 }
 
@@ -659,8 +662,7 @@ void *ObtenerMemoriaShmget (key_t key, size_t tam) {
 int AllocCreateShared (char* arg[], tNodo *nodo) {
 	key_t k;
 	size_t tam = 0;
-	// El parametro NULL es para pasar un string que devuelve un codigo de error
-	// para el tratamiento de errores
+
 	k = (key_t) strtol(arg[2],NULL,10);
 
 	if (arg[3] != NULL) tam = (size_t) strtol(arg[3],NULL,10);
@@ -831,6 +833,7 @@ void searchDealloc (tType type, auxDealloc aux, tList* l) {
 			else
 				i = next(i, *l);
 		}
+
 		if (b) {
 			deallocateAux(l, nodo, i, type);
 		} else
@@ -983,8 +986,8 @@ int cmd_recursiveFunction (container *c){
 
 	if (c->nargs == 2) {
 		auxRecursive((int) strtoimax(c->flags[1], NULL, 10));
-	}
-	else return COMANDO_INVALIDO;
+	} else
+		return COMANDO_INVALIDO;
 
 	return 0;
 }
@@ -1179,16 +1182,12 @@ char *searchExec(tList l, char ejec[]){
 	}
 
 	if(!isEmptyList(l)) {
-
 		iter = first(l);
-
 		do {
 			sprintf(aux, "%s/%s", (char *) getItem(iter, l).id, ejec);
-
 			if (stat(aux, &s) != -1) {
 				return aux;
 			}
-
 		} while ((iter = next(iter, l))!=NIL);
 	}
 
@@ -1227,11 +1226,12 @@ int cmd_searchList(container *c){
 					strcpy(aux, &c->flags[1][1]);
 					strcpy(nodo.id,aux);
 
-					if(findItem(aux,c->searchList) == NIL)
-						if(!insertItem(nodo,last(c->searchList),&c->searchList))
+					if(findItem(aux,c->searchList) == NIL) {
+						if (!insertItem(nodo, last(c->searchList), &c->searchList))
 							free(nodo.id);
 						else
 							free(nodo.id);
+					}
 					break;
 				default:
 					printf("%s", searchExec( c->searchList, c->flags[1]));
@@ -1286,8 +1286,6 @@ int cmd_prog(container *c){
 
 	pid_t PID;
 	int status;
-	int return_signal;
-	int i;
 
 	switch(PID = fork()) {
 
@@ -1305,18 +1303,59 @@ int cmd_prog(container *c){
 	return 0;
 }
 
-int cmd_background(container *c){
-	// TODO Es igual que prog solo que el padre en vez de esperar continua ejecutando
-	return 0;
-}
-
 int cmd_background(container* c) {
+	// TODO Es igual que prog solo que el padre en vez de esperar continua ejecutando
 	if (c->nargs < 2)
 		return COMANDO_INVALIDO;
 	else {
 
 	}
 	return 0;
+}
+
+int cmd_pipe(container *c){
+	int fd[2];
+	pid_t childpid;
+
+	int i;
+	int aux = 0;
+	char *prog1[256];
+	int p1Nargs = 0;
+	char *prog2[256];
+	int p2Nargs = 0;
+
+	if(!strcmp("pipe",c->flags[0])) {
+		pipe(fd);
+		for(i=1; i<c->nargs; i++){
+			if(!aux){
+				if(!strcmp("%"),c->flags[i]) {
+					aux = 1;
+				} else {
+					prog1[p1Nargs] = c->flags[i];;
+					p1Nargs++;
+				}
+			} else {
+				prog2[p2Nargs] = c->flags[i];
+				p2Nargs++;
+			}
+		}
+		if ((childpid = fork()) == 0) {
+			dup2(fd[1], STDOUT_FILENO);
+			close(fd[0]);
+			close(fd[1]);
+			exec_aux(c->searchList,prog1, p1Nargs);
+			perror("Exec falló");
+		} else {
+			dup2(fd[0], STDIN_FILENO);
+			close(fd[0]);
+			close(fd[1]);
+			exec_aux(c->searchList,prog2, p2Nargs);
+			perror("Exec falló en sort");
+		}
+		exit(0);
+	} else {
+		return COMANDO_INVALIDO;
+	}
 }
 
 void freeList(container *c){
@@ -1401,7 +1440,9 @@ int main() {
 	container c;
 	int salir = 0;
 	entrada = malloc(1024);
+
 	createEmptyList(&c.lista, MAXALLOC, pVointer);
+	createEmptyList(&c.backgroundProcess, MAXBPROCESS, pVointer);
 	createEmptyList(&c.searchList, MAXSEARCHLIST, sVtring);
 
 	while (salir<=0) {
