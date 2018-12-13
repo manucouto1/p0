@@ -71,15 +71,15 @@ tPosL findItem (char *id, tList l) {
 		p = first(l);
 		while ((p != NIL) && !b) {
 			switch (l.tId){
-				case 0:
-					sprintf(aux1,"%"PRIxPTR"", (intptr_t ) l.Array[p].id);
+				case iVnteger:
+					sprintf(aux1,"%d", *((int *)l.Array[p].id));
 					b = (!strcmp(aux1,id));
 					break;
-				case 1:
+				case sVtring:
 					//sprintf(aux1,"%s", (char *) l.Array[p].id );
 					b = (!strcmp(l.Array[p].id,id));
 					break;
-				case 2:
+				case pVointer:
 				default:
 					sprintf(aux1,"%p", l.Array[p].id);
 					b = (!strcmp(aux1,id));

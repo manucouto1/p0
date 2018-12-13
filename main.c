@@ -48,7 +48,7 @@
 #define MAXALLOC 4096
 
 
-typedef enum {mallocc = 0, mmapp = 1, shared = 2, process = 3} tType;
+typedef enum {mallocc = 0, mmapp = 1, shared = 2} tType;
 typedef enum {running = 0, stopped = 1, termNormally = 2, termBySignal = 3} tTypeProc;
 
 typedef struct {
@@ -79,7 +79,7 @@ typedef struct {
 	int prioridad;
 	char fechaInicio[256];
 	tTypeProc status;
-	void* return_signal;
+	int return_signal;
 	char args[256];
 } tProcess;
 
@@ -1145,6 +1145,7 @@ void addPathSearchList(tList *l){
 	p=strtok(aux,":");
 
 	nodo.id = strdup(p);
+	nodo.dato = NULL;
 
 	if(findItem(p,*l) == NIL) {
 		if ((p) != NULL && !insertItem(nodo, last(*l), l)) {
@@ -1222,6 +1223,7 @@ int cmd_searchList(container *c){
 					break;
 				case '+':
 					nodo.id = malloc(sizeof(char*[256]));
+					nodo.dato = NULL;
 
 					strcpy(aux, &c->flags[1][1]);
 					strcpy(nodo.id,aux);
@@ -1304,7 +1306,7 @@ int cmd_prog(container *c){
 }
 
 int cmd_background(container* c) {
-	int i, PID, status, return_signal;
+	int i, PID;
 	time_t t;
 	tNodo nodo = {};
 	char *flagsExec[c->nargs];
@@ -1313,83 +1315,123 @@ int cmd_background(container* c) {
 		return COMANDO_INVALIDO;
 	else {
 
+		for (i = 0; i < c->nargs-1; i++) {
+			flagsExec[i] = c->flags[i + 1];
+		}
 		flagsExec[c->nargs-1] = NULL;
 
 		switch(PID = fork()) {
-
 			case -1:
 				return ERROR_FORK;
 			case 0:
-				for (i = 0; i < c->nargs-1; i++) {
-					flagsExec[i] = c->flags[i + 1];
-					printf(" %s \n",flagsExec[i]);
-				}
 				exec_aux(c->searchList,flagsExec, c->nargs - 1);
 				exit(0);
 			default:
 
-				if(PID == waitpid(PID, &status, WNOHANG |WUNTRACED | WCONTINUED)){
+				nodo.id = malloc(sizeof(void *));
+				nodo.dato = malloc(sizeof(tProcess));
 
-					nodo.id = malloc(sizeof(void *));
-					nodo.dato = malloc(sizeof(tProcess));
+				*((pid_t *)nodo.id) = PID;
+				(((tProcess *)nodo.dato)->prioridad) = getpriority(PRIO_PROCESS, (id_t) PID);
 
-					*((pid_t *)nodo.id) = PID;
-					(((tProcess *)nodo.dato)->prioridad) = getpriority(PRIO_PROCESS, (id_t) PID);
-
-					strcpy(((tProcess *)nodo.dato)->args, flagsExec[0]);
-					for(i=1; i<c->nargs-1; i++){
-						strcat((((tProcess *)nodo.dato)->args), " ");
-						strcat((((tProcess *)nodo.dato)->args), flagsExec[i]);
-					}
-
-					((tProcess *)nodo.dato)->status = status;
-					time(&t);
-					strcpy(((tProcess *)nodo.dato)->fechaInicio, asctime(localtime(&t)));
-
-					if(WIFEXITED(status)){
-						((tProcess *)nodo.dato)->return_signal = malloc(100);
-						* ((int *)((tProcess *)nodo.dato)->return_signal) = WEXITSTATUS(status);
-					} else if(WIFSIGNALED(status)){
-						((tProcess *)nodo.dato)->return_signal = NombreSenal(WTERMSIG(status));
-					} else if(WIFSTOPPED(status)){
-						((tProcess *)nodo.dato)->return_signal = NombreSenal(WSTOPSIG(status));
-					} else if(WIFCONTINUED(status)){
-						((tProcess *)nodo.dato)->return_signal = malloc(100);
-						*((int *)((tProcess *)nodo.dato)->return_signal) = WCONTINUED;
-					} else {
-						//printf("Proceso hijo PID: %d \n",status);
-						printf("1\n");
-					}
-
-					if(!insertItem(nodo,NIL,&c->listaBackground)){
-						free(nodo.id);
-						free(nodo.dato);
-					}
-				} else {
-					return ERROR_FORK;
+				strcpy(((tProcess *)nodo.dato)->args, "");
+				for(i=0; i<c->nargs-2; i++){
+					sprintf(((tProcess *)nodo.dato)->args, "%s %s", ((tProcess *)nodo.dato)->args, flagsExec[i]);
 				}
+				if (flagsExec[c->nargs-2][0] != '@')
+					sprintf(((tProcess *)nodo.dato)->args, "%s %s", ((tProcess *)nodo.dato)->args, flagsExec[c->nargs-2]);
 
+				time(&t);
+				strftime(((tProcess *)nodo.dato)->fechaInicio, (size_t) 256, "%a %b %d %Y %R", localtime(&t));
+				((tProcess *)nodo.dato)->status = running;
+
+				if(!insertItem(nodo,NIL,&c->listaBackground)){
+					free(nodo.id);
+					free(nodo.dato);
+				}
 				break;
 		}
 	}
 	return 0;
 }
 
+void updateJobs(tList *listaBackground) {
+	tPosL iter;
+	tNodo nodo;
+	int status;
+
+	if (!isEmptyList(*listaBackground)) {
+
+		iter = first(*listaBackground);
+		do {
+			nodo = getItem(iter,*listaBackground);
+
+			(((tProcess *)nodo.dato)->prioridad) = getpriority(PRIO_PROCESS, (id_t) *((pid_t *) nodo.id));
+			if (*((pid_t *) nodo.id) == waitpid(*((pid_t *) nodo.id), &status, WNOHANG | WUNTRACED | WCONTINUED)) {
+				if (WIFEXITED(status)) {
+					((tProcess *) nodo.dato)->status = termNormally;
+					((tProcess *) nodo.dato)->return_signal = WEXITSTATUS(status);
+				} else if (WIFSIGNALED(status)) {
+					((tProcess *) nodo.dato)->status = termBySignal;
+					((tProcess *) nodo.dato)->return_signal = WTERMSIG(status);
+				} else if (WIFSTOPPED(status)) {
+					((tProcess *) nodo.dato)->status = stopped;
+					((tProcess *) nodo.dato)->return_signal = WSTOPSIG(status);
+				} else if (WIFCONTINUED(status)) {
+					((tProcess *) nodo.dato)->status = running;
+				}
+			}
+			updateItem(listaBackground, iter, nodo);
+
+		} while ((iter=next(iter,*listaBackground))!=NIL);
+	}
+}
+
+void printNodoBackground(tNodo nodo) {
+	tProcess dato;
+	dato = *((tProcess *) nodo.dato);
+
+	switch (dato.status) {
+		case running:
+			printf("%d\tACTIVE\t\t p=%d %22s %s\n", *((pid_t *) nodo.id), dato.prioridad, dato.fechaInicio,
+				   dato.args);
+			break;
+		case termNormally:
+			printf("%d\tTERMINATED (%d)\t p=%d %22s %s\n", *((pid_t *) nodo.id), dato.return_signal,
+				   dato.prioridad, dato.fechaInicio, dato.args);
+			break;
+		case termBySignal:
+			printf("%d\tSIGNALED (%s)\t p=%d %22s %s\n", *((pid_t *) nodo.id),
+				   NombreSenal(dato.return_signal), dato.prioridad, dato.fechaInicio, dato.args);
+			break;
+		case stopped:
+			printf("%d\tSTOPPED (%s)\t p=%d %22s %s\n", *((pid_t *) nodo.id),
+				   NombreSenal(dato.return_signal), dato.prioridad, dato.fechaInicio, dato.args);
+			break;
+		default:
+			break;
+	}
+
+}
+
 int cmd_jobs(container *c){
 	tPosL iter;
-	tProcess *dato;
 	tNodo nodo;
+	if (c->nargs == 1) {
+		updateJobs(&c->listaBackground);
 
-	if(!isEmptyList(c->listaBackground)){
-		iter = first(c->listaBackground);
-		nodo = getItem(iter,c->listaBackground);
-		dato = (tProcess *)nodo.dato;
+		if (!isEmptyList(c->listaBackground)) {
+			iter = first(c->listaBackground);
 
-		do {
-			printf("%-9d%-19sp=%d%22s%s",*((int *) nodo.id),"SIGNALED (SIGKILL)",
-					dato->status,dato->fechaInicio,dato->args);;
-		} while ((iter=next(iter,c->listaBackground))!=NIL);
+			do {
+				nodo = getItem(iter, c->listaBackground);
+				printNodoBackground(nodo);
+			} while ((iter = next(iter, c->listaBackground)) != NIL);
+		}
 	}
+	else
+		return COMANDO_INVALIDO;
+
 	return 0;
 }
 
@@ -1397,13 +1439,39 @@ int cmd_clearjobs(container *c){
 	tPosL iter = first(c->listaBackground);
 	tNodo aux;
 
-	while(!isEmptyList(c->listaBackground)){
-		aux = getItem(iter,c->listaBackground);
-		free(aux.id);
-		free(aux.dato);
-		deleteAtPosition(iter,&c->listaBackground);
+	if (c->nargs == 1) {
+		while (!isEmptyList(c->listaBackground)) {
+			aux = getItem(iter, c->listaBackground);
+			free(aux.id);
+			free(aux.dato);
+			deleteAtPosition(iter, &c->listaBackground);
+		}
 	}
+	else
+		return COMANDO_INVALIDO;
 	return 0;
+}
+
+int cmd_proc(container *c) {
+	tPosL pos;
+	tNodo nodo;
+
+	if (c->nargs == 2) {
+		pos = findItem(c->flags[1], c->listaBackground);
+		if (pos != NIL){
+			nodo = getItem(pos, c->listaBackground);
+			printNodoBackground(nodo);
+		} else {
+			c->nargs = 1;
+			return cmd_jobs(c);
+		}
+
+		return 0;
+	}
+	else if (c->nargs == 1){
+		return cmd_jobs(c);
+	} else
+		return COMANDO_INVALIDO;
 }
 
 int cmd_pipe(container *c){
@@ -1436,6 +1504,9 @@ int cmd_pipe(container *c){
 			}
 		}
 
+		prog1[p1Nargs] = NULL;
+		prog2[p2Nargs] = NULL;
+
 		pipe(fd);
 		pid = fork();
 
@@ -1449,7 +1520,6 @@ int cmd_pipe(container *c){
 		} else {
 			pid = fork();
 			if(pid == 0){
-
 				dup2(fd[0], STDIN_FILENO);
 				close(fd[1]);
 				close(fd[0]);
@@ -1471,7 +1541,7 @@ int cmd_pipe(container *c){
 	}
 }
 
-void freeList(container *c){
+void freeAllocList(container *c){
 
 	tPosL pos = first(c->lista);
 	tNodo aux;
@@ -1483,14 +1553,33 @@ void freeList(container *c){
 		}
 		pos = next(pos,c->lista);
 	}
-
 	free(c->lista.Array);
-	free(c->searchList.Array);
-	printf("Bye !\n");
+}
+
+void freeBasicList(tList *lista) {
+	tPosL pos = first(*lista);
+	tNodo nodo;
+
+	while(!isEmptyList(*lista)){
+		if(pos != NIL){
+			nodo = getItem(pos, *lista);
+			if (nodo.id != NULL)
+				free(nodo.id);
+			if (nodo.dato != NULL)
+				free(nodo.dato);
+			deleteAtPosition(pos, lista);
+		}
+		pos = next(pos,*lista);
+	}
+
+	free(lista->Array);
 }
 
 int cmd_exit(container *c) {
-	freeList(c);
+	freeAllocList(c);
+	freeBasicList(&c->listaBackground);
+	freeBasicList(&c->searchList);
+	printf("Bye !\n");
 	return 1;
 }
 
@@ -1522,6 +1611,7 @@ struct{
 		{"background", cmd_background},
 		{"jobs", cmd_jobs},
 		{"clearjobs", cmd_clearjobs},
+		{"proc", cmd_proc},
 		{"pipe", cmd_pipe},
 		{"exit",cmd_exit},
 		{"end",cmd_exit},
