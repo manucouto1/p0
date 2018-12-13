@@ -27,6 +27,7 @@
 #include <wait.h>
 
 #include "list.h"
+#include "senales.h"
 
 #define COMANDO_INVALIDO -1
 #define ERROR_CREATING_FILE -2
@@ -76,10 +77,10 @@ typedef struct {
 
 typedef struct {
 	int prioridad;
-	char *comando;
-	char *fechaInicio;
+	char fechaInicio[256];
 	tTypeProc status;
-	void* valorProc;
+	void* return_signal;
+	char args[256];
 } tProcess;
 
 struct element_description{
@@ -1304,15 +1305,19 @@ int cmd_prog(container *c){
 
 int cmd_background(container* c) {
 	// TODO Es igual que prog solo que el padre en vez de esperar continua ejecutando
-	int PID;
-	int status;
-	int return_signal;
+	int i, PID, status, return_signal;
+	time_t t;
 	tNodo nodo = {};
-	tProcess dato = {};
+	char *flagsExec[c->nargs];
 
 	if (c->nargs < 2)
 		return COMANDO_INVALIDO;
 	else {
+
+		for (i = 0; i < c->nargs-1; i++) {
+			flagsExec[i] = c->flags[i + 1];
+		}
+		flagsExec[c->nargs-1] = NULL;
 
 		switch(PID = fork()) {
 
@@ -1326,31 +1331,40 @@ int cmd_background(container* c) {
 
 				if(PID == waitpid(PID, &status, WNOHANG |WUNTRACED | WCONTINUED)){
 
-					if(WIFEXITED(status)){
-						return_signal = WEXITSTATUS(status);
-						printf("Exit proceso hijo estado: %d\n",return_signal);
-					} else if(WIFSIGNALED(status)){
-						return_signal =WTERMSIG(status);
-						printf("Proceso hijo estado: %d\n",return_signal);
-					} else if(WIFSTOPPED(status)){
-						return_signal = WSTOPSIG(status);
-						printf("Proceso hijo parado estado: %d\n",return_signal);
-					} else if(WIFCONTINUED(status)){
-						//return_signal = WCONTINUED(status);
-						printf("Ejecución normal del hijo\n");
-					} else {
-						printf("Proceso hijo PID: %d \n",status);
+					nodo.id = malloc(sizeof(void *));
+					nodo.dato = malloc(sizeof(tProcess));
+
+					*((pid_t *)nodo.id) = PID;
+					(((tProcess *)nodo.dato)->prioridad) = getpriority(PRIO_PROCESS, (id_t) PID);
+
+					strcpy(((tProcess *)nodo.dato)->args, flagsExec[0]);
+					for(i=1; i<c->nargs-1; i++){
+						strcat((((tProcess *)nodo.dato)->args), " ");
+						strcat((((tProcess *)nodo.dato)->args), flagsExec[i]);
 					}
 
-					// TODO recopilar información para el tDato
+					((tProcess *)nodo.dato)->status = status;
+					time(&t);
+					strcpy(((tProcess *)nodo.dato)->fechaInicio, asctime(localtime(&t)));
 
-					nodo.id = malloc(sizeof(int));
-					nodo.dato = malloc(sizeof(tProcess));
-					nodo.id = &PID;
-					nodo.dato = &dato; //falta definir el struct de p.e -> tBackground
+					if(WIFEXITED(status)){
+						((tProcess *)nodo.dato)->return_signal = malloc(100);
+						* ((int *)((tProcess *)nodo.dato)->return_signal) = WEXITSTATUS(status);
+					} else if(WIFSIGNALED(status)){
+						((tProcess *)nodo.dato)->return_signal = NombreSenal(WTERMSIG(status));
+					} else if(WIFSTOPPED(status)){
+						((tProcess *)nodo.dato)->return_signal = NombreSenal(WSTOPSIG(status));
+					} else if(WIFCONTINUED(status)){
+						((tProcess *)nodo.dato)->return_signal = malloc(100);
+						*((int *)((tProcess *)nodo.dato)->return_signal) = WCONTINUED;
+					} else {
+						//printf("Proceso hijo PID: %d \n",status);
+						printf("1\n");
+					}
 
-					if(!insertItem(nodo,last(c->listaBackground),&c->listaBackground)){
-						// Los free que haya que hacer si falta la inserción
+					if(!insertItem(nodo,NIL,&c->listaBackground)){
+						free(nodo.id);
+						free(nodo.dato);
 					}
 				} else {
 					return ERROR_FORK;
@@ -1364,12 +1378,17 @@ int cmd_background(container* c) {
 
 int cmd_jobs(container *c){
 	tPosL iter;
+	tProcess *dato;
+	tNodo nodo;
 
 	if(!isEmptyList(c->listaBackground)){
 		iter = first(c->listaBackground);
+		nodo = getItem(iter,c->listaBackground);
+		dato = (tProcess *)nodo.dato;
 
 		do {
-			printf("%-9d%-19sp=%d%22s",4793,"SIGNALED (SIGKILL)",-1,"Fri Oct 19 2018 12:35 xterm");;//Ejemplo
+			printf("%-9d%-19sp=%d%22s%s",(pid_t) nodo.id,"SIGNALED (SIGKILL)",
+					dato->status,dato->fechaInicio,dato->args);;
 		} while ((iter=next(iter,c->listaBackground))!=NIL);
 	}
 	return 0;
@@ -1382,8 +1401,7 @@ int cmd_clearjobs(container *c){
 	while(!isEmptyList(c->listaBackground)){
 		aux = getItem(iter,c->listaBackground);
 		free(aux.id);
-		// Supongo que también haremos un struct con la información del proceso
-		// free(aux.dato);
+		free(aux.dato);
 		deleteAtPosition(iter,&c->listaBackground);
 	}
 	return 0;
@@ -1502,6 +1520,9 @@ struct{
 		{"fork", cmd_fork},
 		{"searchlist", cmd_searchList},
 		{"exec", cmd_exec},
+		{"background", cmd_background},
+		{"jobs", cmd_jobs},
+		{"clearjobs", cmd_clearjobs},
 		{"pipe", cmd_pipe},
 		{"exit",cmd_exit},
 		{"end",cmd_exit},
