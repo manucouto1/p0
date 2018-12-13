@@ -1304,7 +1304,6 @@ int cmd_prog(container *c){
 }
 
 int cmd_background(container* c) {
-	// TODO Es igual que prog solo que el padre en vez de esperar continua ejecutando
 	int i, PID, status, return_signal;
 	time_t t;
 	tNodo nodo = {};
@@ -1314,18 +1313,18 @@ int cmd_background(container* c) {
 		return COMANDO_INVALIDO;
 	else {
 
-		for (i = 0; i < c->nargs-1; i++) {
-			flagsExec[i] = c->flags[i + 1];
-		}
 		flagsExec[c->nargs-1] = NULL;
 
 		switch(PID = fork()) {
 
 			case -1:
-				perror("fallo en fork");
 				return ERROR_FORK;
 			case 0:
-				exec_aux(c->searchList,c->flags, c->nargs);
+				for (i = 0; i < c->nargs-1; i++) {
+					flagsExec[i] = c->flags[i + 1];
+					printf(" %s \n",flagsExec[i]);
+				}
+				exec_aux(c->searchList,flagsExec, c->nargs - 1);
 				exit(0);
 			default:
 
@@ -1387,7 +1386,7 @@ int cmd_jobs(container *c){
 		dato = (tProcess *)nodo.dato;
 
 		do {
-			printf("%-9d%-19sp=%d%22s%s",(pid_t) nodo.id,"SIGNALED (SIGKILL)",
+			printf("%-9d%-19sp=%d%22s%s",*((int *) nodo.id),"SIGNALED (SIGKILL)",
 					dato->status,dato->fechaInicio,dato->args);;
 		} while ((iter=next(iter,c->listaBackground))!=NIL);
 	}
