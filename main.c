@@ -468,8 +468,8 @@ int fun_list_rec(char *elemento, struct stat path_stat, int nivel, int argH, int
 				while ((ent = readdir(dir)) != NULL) {
 					if (strcmp(ent->d_name, ".")!=0 && strcmp(ent->d_name, "..")!=0) {
 						lstat(ent->d_name, &path_stat);
-						if (!(!argH && (ent->d_name[0] == '.'))) {
-							fun_list_rec(ent->d_name, path_stat, nivel++, argH, argR, argN);
+						if (argH || (ent->d_name[0] != '.')) {
+							fun_list_rec(ent->d_name, path_stat, ++nivel, argH, argR, argN);
 						}
 					}
 				}
@@ -1200,6 +1200,7 @@ int cmd_searchList(container *c){
 	char aux[256];
 	tNodo nodo={};
 	tPosL iter;
+	char *pathExec;
 
 	switch(c->nargs){
 		case 1:
@@ -1231,12 +1232,12 @@ int cmd_searchList(container *c){
 					if(findItem(aux,c->searchList) == NIL) {
 						if (!insertItem(nodo, last(c->searchList), &c->searchList))
 							free(nodo.id);
-						else
-							free(nodo.id);
 					}
 					break;
 				default:
-					printf("%s", searchExec( c->searchList, c->flags[1]));
+					pathExec = searchExec( c->searchList, c->flags[1]);
+					if (pathExec != NULL)
+						printf("%s", searchExec( c->searchList, c->flags[1]));
 					break;
 			}
 			break;
@@ -1515,7 +1516,6 @@ int cmd_pipe(container *c){
 			close(fd[0]);
 			close(fd[1]);
 			exec_aux(c->searchList,prog1, p1Nargs);
-			perror("Prog 1 falló");
 			exit(0);
 		} else {
 			pid = fork();
@@ -1524,7 +1524,6 @@ int cmd_pipe(container *c){
 				close(fd[1]);
 				close(fd[0]);
 				exec_aux(c->searchList,prog2, p2Nargs);
-				perror("Prog 2 falló");
 				exit(0);
 			} else {
 				int status;
@@ -1533,10 +1532,16 @@ int cmd_pipe(container *c){
 				waitpid(pid,&status,0);
 			}
 		}
+		for (i = 0; i < p1Nargs; i++)
+			free(prog1[i]);
+		for (i = 0; i < p2Nargs; i++)
+			free(prog2[i]);
 		free(prog1);
 		free(prog2);
 		return 0;
 	} else {
+		free(prog1);
+		free(prog2);
 		return COMANDO_INVALIDO;
 	}
 }
